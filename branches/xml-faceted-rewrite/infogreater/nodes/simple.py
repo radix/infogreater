@@ -44,7 +44,7 @@ class SimpleNodeXML(facets.Facet, xmlobject.XMLObject):
 
     def getAttrs(self):
         nodeui = INodeUI(self)
-        return {'visible': str(nodeui.visible),
+        return {'content': INode(self).getContent(),
                 'expanded': str(nodeui.expanded)}
 
     def getChildren(self):
@@ -58,7 +58,6 @@ class SimpleNodeXML(facets.Facet, xmlobject.XMLObject):
         node.children = [INode(x) for x in children or []]
 
         nodeui = INodeUI(self)
-        nodeui.visible = xmlobject.boolFromString(attrs['visible'])
         nodeui.expanded = xmlobject.boolFromString(attrs['expanded'])
         nodeui.controller = ctx.get('controller')
         nodeui._makeWidget()
@@ -243,7 +242,7 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
     def key_shift_I(self):
         if self.editing: return
         print "HEY"
-        d = presentChoiceMenu("Which node type do you want to create?",
+        d = base.presentChoiceMenu("Which node type do you want to create?",
                               [x.__name__ for x in nodeTypes])
         d.addCallback(self._cbGotNodeChoice)
 

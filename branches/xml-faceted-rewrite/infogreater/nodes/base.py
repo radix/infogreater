@@ -72,8 +72,6 @@ class BaseNodeUI(facets.Facet):
     
     __implements__ = (INodeUI,)
 
-
-    visible = True
     expanded = True
 
     V_PAD = 10

@@ -19,12 +19,6 @@ class IXMLObject(interface.Interface):
         one. However, that object WILL NOT have had its state yet.
         """
 
-    def getXMLState(self):
-        """
-        Return a two-tuple of a mapping of strings to strings, and a
-        sequence of IXMLObjects or otherwise marmalade-able objects.
-        """
-
 
 class IXMLParent(interface.Interface):
     """
@@ -54,22 +48,18 @@ class XMLObject(marmalade.DOMJellyable, object):
     DISALLOWED. If you want a 'secondary reference', use an
     xmlobject.reference(theReferent). The 'referent' attribute of
     'reference' instances gives you the referent object.
+
+    Subclasses will want to do various things:
+        * implement getXMLState, if you don't like using self.attrs and
+          self.children (or don't like having your application code deal
+          with them)
+        * implement setXMLState manually, for the same reason.
+        * set the tagName attribute.
+    
     """
 
     __implements__ = IXMLObject,
-
-    def __init__(self, attrs=None, children=None, tagName=None):
-        """
-        'attrs': (optional) A mapping of strings to strings
-        'children': (optional) A sequence of jellyToNode-able objects,
-                    respectively.
-        """
-        self.attrs = attrs
-        self.children = children
-        if tagName is None:
-            self.tagName = reflect.qual(self.__class__)
-        else:
-            self.tagName = tagName
+    tagName = 'XMLObject'
 
     def __getstate__(self):
         raise Exception("XMLObjects are not automatically persistable.")
@@ -79,12 +69,13 @@ class XMLObject(marmalade.DOMJellyable, object):
 
     def jellyToDOM_1(self, jellier, element):
         element.attributes = {}
-        if self.attrs:
-            element.attributes = self.attrs
+        attrs, children = self.getXMLState()
+        if attrs:
+            element.attributes = attrs
         element.tagName = self.tagName
-        if self.children:
+        if children:
             element.childNodes = []
-            for child in self.children:
+            for child in children:
                 xo = IXMLObject(child, child)
                 element.childNodes.append(jellier.jellyToNode(xo))
 
@@ -93,9 +84,15 @@ class XMLObject(marmalade.DOMJellyable, object):
         reflect.accumulateClassList(self.__class__, 'contextRemembers', l)
         for contextName, attributeName in l:
             setattr(self, attributeName, ctx.get(contextName))
-
         self.attrs = attrs
         self.children = children
+
+    def getXMLState(self):
+        """
+        Return a two-tuple of a mapping of strings to strings, and a
+        sequence of IXMLObjects or otherwise marmalade-able objects.
+        """
+        return self.attrs, self.children
 
 
 def toXML(xo, fn):

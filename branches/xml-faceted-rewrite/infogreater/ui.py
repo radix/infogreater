@@ -217,11 +217,3 @@ class GreatUI(gtk2util.GladeKeeper):
 
 from infogreater.nodes import simple, filesystem, textfile
 nodeTypes = [textfile.TextFileNode, filesystem.FileSystemNode]
-
-
-
-
-
-
-
-        
