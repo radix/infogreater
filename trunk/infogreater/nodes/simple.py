@@ -19,16 +19,6 @@ class SimpleNode(facets.Facet):
         self.children = []
         self.parent = parent
 
-    def _setContent(self, v):
-        if v == 'Ha!':
-            print "OH CRAP"
-            import traceback
-            traceback.print_stack()
-        self._content = v
-
-    content = property(lambda s: s._content,
-                       _setContent)
-
 
     def getContent(self):
         return self.content
@@ -366,7 +356,6 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         if self.editing: return
         parent = INode(self).parent
         if parent:
-            print "no parent"
             INodeUI(parent).focus()
         return STOP_EVENT
 
