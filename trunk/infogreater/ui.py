@@ -128,7 +128,11 @@ class GreatUI(gtk2util.GladeKeeper):
 
     def loadNew(self):
         self._destroyChildren()
-        nodeui = base.INodeUI(simple.makeSimple(self))
+        nodeui = base.INodeUI(
+            simple.makeSimple(self, content=
+"""Hit ctrl-e to edit this node, ctrl-i to insert new children.
+See the README for more information."""
+        ))
         #nodeui._makeWidget()
         self.root = nodeui
         self.redisplay()
