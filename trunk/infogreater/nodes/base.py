@@ -179,6 +179,7 @@ class BaseNodeUI(facets.Facet):
 
     def destroyChildren(self):
         self.widget.destroy()
+        self.widget = None
         for x in self.uichildren():
             x.destroyChildren()
 

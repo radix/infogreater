@@ -88,9 +88,9 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
     editing = False
 
     def _makeWidget(self):
-##        if self.widget is not None:
-##            print "Booo Hoooooo, I already have a widget :-(((", self
-##            return
+        if self.widget is not None:
+            print "I already have a widget :-(((", self
+            print "But I'll continue anyway!"
         self.widget = gtk.TextView()
         
         width = self.hasChildren() and 2 or 1
@@ -246,7 +246,6 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
 
     def key_shift_I(self):
         if self.editing: return
-        print "HEY"
         d = base.presentChoiceMenu("Which node type do you want to create?",
                                    [x[0] for x in base.nodeTypes])
         d.addCallback(self._cbGotNodeChoice)
