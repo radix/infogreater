@@ -40,6 +40,12 @@ trunk/infogreater/*.ig
 trunk/infogreater/*.mm
 trunk/infogreater/*.pyc
 trunk/infogreater/*.tmp
+trunk/infogreater/gtkgoodies/*.bak
+trunk/infogreater/gtkgoodies/*.gladep
+trunk/infogreater/gtkgoodies/*.ig
+trunk/infogreater/gtkgoodies/*.mm
+trunk/infogreater/gtkgoodies/*.pyc
+trunk/infogreater/gtkgoodies/*.tmp
 trunk/infogreater/nodes/*.bak
 trunk/infogreater/nodes/*.gladep
 trunk/infogreater/nodes/*.ig

@@ -11,7 +11,7 @@ from twisted.internet import defer, reactor
 
 import gtk
 from gtk import glade
-from gtkgoodies import tree
+from infogreater.gtkgoodies import tree
 
 from infogreater import util, facets, xmlobject
 from infogreater.nodes import base, simple
