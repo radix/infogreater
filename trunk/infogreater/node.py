@@ -22,7 +22,7 @@ class SimpleNode:
 
 
     def __str__(self):
-        return "<%s content=%r children=%r>" % (self.__class__, self.content, self.children)
+        return "<%s content=%r children=%r>" % (self.__class__.__name__, self.content, self.children)
     __repr__ = __str__
 
 import os
@@ -52,10 +52,15 @@ class TextFileNode(SimpleNode):
             else:
                 return "hell"
 
-        title = inf.readline().rstrip('\r\n')
-        self.setContent(title)
-        bloo = inf.readline()
-        assert "=" in bloo, repr(bloo) # line of "==="
+
+        line = inf.readline()
+        title = []
+        # while we haven't reached a line entirely ====
+        while line.strip('=\r\n'):
+            title.append(line.rstrip('\r\n'))
+            line = inf.readline()
+        self.setContent('\n'.join(title))
+        assert '=' in line, line
 
         nodes = {-1: [self]}
         spaces = 0
@@ -65,59 +70,40 @@ class TextFileNode(SimpleNode):
                     spaces += 1
                 else:
                     break
-            assert char == '*'
-            content = line[spaces+2:].rstrip('\r\n')
-            level = (spaces - 1) / 2
-            theNode = SimpleNode(content)
-            nodes.setdefault(level, []).append(theNode)
-            nodes[level - 1][-1].putChild(theNode)
+
+
+            if not char == '*':
+                content = line[spaces:].rstrip('\r\n')
+                # theNode is from last iteration
+                theNode.setContent(theNode.getContent() + '\n' + content)
+            else:
+                content = line[spaces+2:].rstrip('\r\n')
+                level = (spaces - 1) / 2
+                theNode = SimpleNode(content)
+                nodes.setdefault(level, []).append(theNode)
+                nodes[level - 1][-1].putChild(theNode)
             spaces = 0
             level = 0
 
+
+    def writeNode(self, outf, content, spaces):
+        lines = content.splitlines()
+        outf.write(' '*spaces + ' * ' + lines[0] + '\n')
+        for line in lines[1:]:
+            outf.write(' '*spaces + '   ' + line + '\n')
 
     def save(self, outf=None):
         if outf is None:
             outf = open(self.filename, 'w')
         # XXX support newlines!
-        outf.write(self.content.replace('\n', '|') + '\n')
-        outf.write('='*len(self.content) + '\n')
+        outf.write(self.content + '\n')
+        # write out as many =s as the longest line of the title
+        outf.write('='*max(map(len, self.content.splitlines())) + '\n')
         return self._save(outf, self.children, 0)
 
 
     def _save(self, outf, children, level):
         for x in children:
-            outf.write('  '*level + ' * ' + x.content + '\n')
+            self.writeNode(outf, x.content, 2*level)
             self._save(outf, x.children, level+1)
         
-if __name__ == '__main__':
-    tn = TextFileNode("Foorg.txt")
-    tn.setContent("The TEXT file of DOOM.")
-
-    p1 = SimpleNode("Point ONE.")
-    tn.putChild(p1)
-    p1.putChild(SimpleNode("I am CHRIS."))
-    p1.putChild(SimpleNode("I am ARMSTRONG."))
-
-    p2 = SimpleNode("Point 2.")
-    tn.putChild(p2)
-    skinny = SimpleNode("I am Skinny.")
-    p2.putChild(skinny)
-    skinny.putChild(SimpleNode("Yeah, pretty skinny."))
-    p2.putChild(SimpleNode("And I'm 5'11."))
-
-    from cStringIO import StringIO
-    io = StringIO()
-    tn.save(io)
-    FIRST = io.getvalue()
-    print FIRST
-    io.seek(0)
-    tn2 = TextFileNode('ueoa')
-    tn2.load(io)
-    import sys
-    io = StringIO()
-    tn2.save(io)
-    SECOND = io.getvalue()
-    print SECOND
-    assert FIRST == SECOND
-    print "PASS"
-

@@ -53,7 +53,8 @@ class FileNodeTest(unittest.TestCase):
 
     def testNewLines(self):
         content = """The TEXT file of DOOM.
-======================
+WITH A FRIGGIN' NEWLINE
+=======================
  * Point ONE.
    * I am CHRIS
      JACOB.
@@ -69,4 +70,4 @@ class FileNodeTest(unittest.TestCase):
         tn.save(io)
         self.assertEquals(io.getvalue(), content)        
 
-    testNewLines.skip = "Implement support for multi-line nodes"
+
