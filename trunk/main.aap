@@ -18,6 +18,7 @@ GTKINSTALLERURI = http://umn.dl.sourceforge.net/sourceforge/gladewin32/$(GTKINST
     # stick GTKINSTALLER into strings, it will be used when generating
     # installer.nsi later on
     strings['gtkinstaller'] = _no.GTKINSTALLER
+    strings['generated'] = "XXX GENERATED! DO NOT EDIT! EDIT .in FILE INSTEAD!"
 version = `strings['version']`
 name = `strings['name']`
 
