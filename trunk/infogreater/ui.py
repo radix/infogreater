@@ -84,10 +84,9 @@ class GreatUI(gtk2util.GladeKeeper):
         # TextView's size-changing event.
 
         # XXX This is a huge bug it must be fixed!
-        
-        reactor.callLater(0.1, lambda: (self.redisplay(), self.root.widget.grab_focus()))
+        reactor.callLater(0.2, lambda: (self.redisplay(), self.root.widget.grab_focus()))
         # End hack
-        
+
         self.root.widget.grab_focus()
 
 
@@ -106,7 +105,14 @@ class GreatUI(gtk2util.GladeKeeper):
             self.drawLines(box)
         
     def redisplay(self):
+        """
+        Redisplay the whole tree. This should really go away; the tree
+        algorithm needs to be made incremental and respond to resizing
+        of individual nodes.
+        """
         print "I AM REDISPLAYING"
+        # Get the height of the entire tree, and position and display
+        # the root node half-way down the height.
         width, height = self.canvas.window.get_geometry()[2:4]
         self.canvas.window.clear_area_e(0,0, width, height)
         if not hasattr(self, 'root'):
@@ -435,8 +441,10 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.controller.canvas.put(self.widget, 0,0)
         self.widget.hide()
 
+
     def focus(self):
         self.widget.grab_focus()
+
 
     def resize_border(self, width):
         for thingy in (gtk.TEXT_WINDOW_LEFT, gtk.TEXT_WINDOW_RIGHT,
@@ -553,6 +561,19 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         return STOP_EVENT
 
     def key_Down(self):
+
+        # XXX - if there's nothing below, traverse parents backward
+        # (up the tree) until I find one that has a lower sibling;
+        # check the lower sibling if it has a node as many levels deep
+        # as I traversed up; switch to it. If it doesn't, keep going
+        # back/down until I find one.
+
+        # A - B - C <-- hits downarrow when C is selected
+        # | 
+        # D - E
+        # |
+        # F - G - H <-- should end up here.
+        
         if self.editing: return
         if self.parent:
             index = self.parent.childBoxes.index(self)+1
@@ -561,6 +582,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             self.parent.childBoxes[index].focus()
 
     def key_Up(self):
+        # XXX - Same XXX as key_Down, except reversed.
         if self.editing: return
         if self.parent:
             self.parent.childBoxes[self.parent.childBoxes.index(self)+-1].focus()

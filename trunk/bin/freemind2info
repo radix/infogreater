@@ -6,6 +6,8 @@ if string.find(os.path.abspath(sys.argv[0]), os.sep+'InfoGreater') != -1:
     sys.path.insert(0, os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]), os.pardir, os.pardir)))
 ### end of preamble
 
+sys.exit("Exiting! This program is buggy.")
+
 from infogreater import freemind
 
 import cPickle
