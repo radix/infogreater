@@ -110,7 +110,7 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
             print "But I'll continue anyway!"
         self.widget = gtk.TextView()
         
-        width = self.hasChildren() and 2 or 1
+        width = INode(self).hasChildren() and 2 or 1
         self.resize_border(width)
 
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
@@ -377,6 +377,42 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
         sibs[i].focus()
 
     key_ctrl_p = key_Up
+
+
+class DynamicCachingNodeUI(BaseNodeUI):
+    """
+    Set me on a faceted with an INode that you don't want to traverse
+    all at once, and you don't want to keep all children in
+    memory.
+    """
+    # Maybe make this a mixin?
+    expanded = False
+    def __init__(self, *a, **kw):
+        self._cacheChildren = []
+        BaseNodeUI.__init__(self, *a, **kw)
+
+
+    def placedUnder(self, parent):
+        INode(self).parent = INode(parent)
+        self._makeWidget()
+
+
+    def uichildren(self):
+        return self._cacheChildren
+
+
+    def showChildren(self):
+        children = INode(self).getChildren()
+        self._cacheChildren = [INodeUI(x) for x in children]
+        BaseNodeUI.showChildren(self)
+
+
+    def hideChildren(self):
+        BaseNodeUI.hideChildren(self)
+        for x in self._cacheChildren:
+            x.destroyChildren()
+        self._cacheChildren = []
+
 
 
 

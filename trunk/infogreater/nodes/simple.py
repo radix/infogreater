@@ -27,8 +27,12 @@ class SimpleNode(facets.Facet):
 
     def getChildren(self):
         return self.children
+
     def setChildren(self, children):
         self.children = children
+
+    def hasChildren(self):
+        return bool(self.getChildren())
 
     def __str__(self):
         return "<%s at %s content=%r children=%r>" % (self.__class__.__name__,
@@ -87,8 +91,6 @@ STOP_EVENT = True # Just to make it more obvious.
 class SimpleNodeUI(base.BaseNodeUI):
     editing = False
 
-    def hasChildren(self):
-        return bool(INode(self).getChildren())
         
 ##    def getTreeIter(self):
 ##        if hasattr(self, 'treeiter'):

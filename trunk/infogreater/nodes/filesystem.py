@@ -18,34 +18,12 @@ class FileSystemNode(facets.Facet):
     def getContent(self):
         return self.path
 
-# XXX I really ought to be subclassing a "DynamicCachingUI" or
-# something
-class FileSystemUI(base.BaseNodeUI):
-    expanded = False
-    def __init__(self, *a, **kw):
-        self._cacheChildren = []
-        base.BaseNodeUI.__init__(self, *a, **kw)
 
     def hasChildren(self):
-        return os.path.isdir(INode(self).path)
+        return os.path.isdir(self.path)
 
-    def placedUnder(self, parent):
-        INode(self).parent = INode(parent)
-        self._makeWidget()
 
-    def uichildren(self):
-        return self._cacheChildren
 
-    def showChildren(self):
-        children = INode(self).getChildren()
-        self._cacheChildren = [INodeUI(x) for x in children]
-        base.BaseNodeUI.showChildren(self)
-
-    def hideChildren(self):
-        base.BaseNodeUI.hideChildren(self)
-        for x in self._cacheChildren:
-            x.destroyChildren()
-        self._cacheChildren = []
 
 class FileSystemXML(base.BaseNodeUI):
     tagName = 'FileSystem'
@@ -73,7 +51,7 @@ class FileSystemXML(base.BaseNodeUI):
 def makeFileSystemBase(path='/'):
     faced = facets.Faceted()
     faced[INode] = FileSystemNode(faced, path)
-    faced[INodeUI] = FileSystemUI(faced)
+    faced[INodeUI] = base.DynamicCachingNodeUI(faced)
     faced[xmlobject.IXMLObject] = FileSystemXML(faced)
     #faced[facets.IReprable] = INode(faced)
     return faced
