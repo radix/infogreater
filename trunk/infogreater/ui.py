@@ -235,7 +235,7 @@ class BaseNodeUI:
     expanded = True
 
 
-    V_PAD = 20
+    V_PAD = 0
     H_PAD = 20
 
     widget = None
@@ -285,20 +285,34 @@ class BaseNodeUI:
         if not (self.expanded and self.childBoxes):
             return
 
-        newX = X + self.widget.size_request()[0] + self.H_PAD
-        newY = Y - (self.height // 2)
+        # Shift child right by my widget-width plus padding.
+        childX = X + self.widget.size_request()[0] + self.H_PAD
+
+        # Shift child up by my *total*-height div 2. (so the parent is
+        # in the Y-middle of the children).
+        childY = Y - (self.height // 2)
+
         first = self.childBoxes[0]
-        newY = newY + (first.height // 2)
-        first.redisplay(newX, newY)
+
+        # WHAT???? This centers it, but I don't know why it's
+        # necessary! I would understand it if fixed.moved's arguments
+        # were the new *center* of the widget... but that doesn't make
+        # sense!
+        childY = childY + (first.height // 2)
+
+        first.redisplay(childX, childY)
+
         prevHeight = first.height
 
         for child in self.childBoxes[1:]:
-            if child.expanded and child.childBoxes:
-                newY += (prevHeight // 2) + (child.height // 2)
-            else:
-                newY += prevHeight
-            newY += self.V_PAD
-            child.redisplay(newX, newY)
+
+            # Hmm. Why isn't this just "+= prevHeight"?? It screws things
+            # up if it is. I think maybe it *should* be prevHeight,
+            # but something somewhere *else* is being too annoying to
+            # allow it to be. XXX.
+            childY += (prevHeight // 2) + (child.height // 2)
+            childY += self.V_PAD
+            child.redisplay(childX, childY)
             prevHeight = child.height
 
 
@@ -334,6 +348,8 @@ class SimpleNodeUI(BaseNodeUI):
 
     # XXX - Conversion to TextViews for SimpleNodes
     # XXX - Conversion to other Node types
+    # XXX - cut'n'paste
+    # XXX - separate view for cut-buffer?
 
     def _makeWidget(self):
         self.widget = gtk.Entry()
@@ -405,8 +421,6 @@ class SimpleNodeUI(BaseNodeUI):
 
 
     def moveRight(self):
-        if not self.expanded:
-            self.toggleShowChildren()
         if not self.childBoxes:
             # Hack: don't unfocus the current widget if it's a leafnode.
             # lame: I really ought to be stopping whatever's
@@ -419,6 +433,10 @@ class SimpleNodeUI(BaseNodeUI):
             # the widget to focus. Its algorithm is fairly good.
             
             reactor.callLater(0,self.widget.grab_focus)
+        elif not self.expanded:
+            self.toggleShowChildren()
+            reactor.callLater(0, self.childBoxes[0].widget.grab_focus)
+
 
     def moveLeft(self):
         if self.parent:
