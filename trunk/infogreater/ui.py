@@ -168,13 +168,14 @@ class INodeUI(components.Interface):
     expanded = property(doc="Whether or not this node's children are visible.")
 
     height = property(doc="""The current cached total height of the node.
-    XXX This should be unnecessary.""")
+    XXX(lowpri) This should be unnecessary.""")
 
     childBoxes = property(doc="""The children (list of INodeUIs) of this node.
-    XXX This *really* should be unnecessary, it's only used for its
-    truth value when doing some display calculations. It could
-    probably be replaced with hasChildren(). Hell... Shouldn't the
-    'expand' attribute be fully sufficient?""")
+    XXX Being in the interface is *really* unnecessary, it's only used
+    externally for its truth value when doing some display
+    calculations. It could probably be replaced with
+    hasChildren(). Hell... Shouldn't the 'expand' attribute be fully
+    sufficient?""")
     
 
     def calculateHeight(self):
@@ -312,10 +313,8 @@ BLACK = gtk.gdk.color_parse('#000000')
 class SimpleNodeUI(BaseNodeUI):
     editing = False
 
-    # XXX - arrow navigation is working remarkably well for having no
-    # implementation in my code at all, but it's not perfect. If I hit
-    # left-arrow when there isn't a node directly adjacent, it'll just
-    # unselect all.
+    # XXX - Conversion to TextViews for SimpleNodes
+    # XXX - Conversion to other Node types
 
     def _makeWidget(self):
         self.widget = gtk.Entry()
@@ -325,8 +324,6 @@ class SimpleNodeUI(BaseNodeUI):
         self.widget.set_editable(False)
         self.widget.connect('key-press-event', self._cbGotKey)
         self.widget.connect('changed', self._cbChanged)
-        #XXX ARGH this doesn't happen on mouse-click DAMNIT
-        #self.widget.connect('focus', self._cbFocus)
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
         self.canvas.put(self.widget, 0,0)
@@ -395,6 +392,11 @@ class SimpleNodeUI(BaseNodeUI):
             # handling key-press-event from handling it and choosing a
             # widget to focus (it ain't the canvas; i can't figure out
             # _what_ it is)
+
+            # Note: I'm actually relying on the semantics of whatever
+            # *is* handling key-press-event here, by letting it choose
+            # the widget to focus. Its algorithm is fairly good.
+            
             reactor.callLater(0,self.widget.grab_focus)
 
     def moveLeft(self):
@@ -403,6 +405,7 @@ class SimpleNodeUI(BaseNodeUI):
         else:
             # lame hack: see moveRight
             reactor.callLater(0,self.widget.grab_focus)
+
 
     def edit(self):
         self.oldText = self.widget.get_text()
@@ -420,7 +423,6 @@ class SimpleNodeUI(BaseNodeUI):
         self.resize()
         del self.oldText
         #reactor.callLater(0, self.widget.grab_focus)
-
 
 
     def addChild(self):
