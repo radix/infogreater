@@ -417,6 +417,7 @@ STOP_EVENT = True # Just to make it more obvious.
 class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
 
+    
     persistenceForgets = ['buffer']
     
     def _makeWidget(self):
@@ -432,13 +433,12 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.connect('key-press-event', self._cbGotKey)
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
+        self.widget.connect('size-allocate', self._cbSized)
 
         self.controller.canvas.put(self.widget, 0,0)
         self.widget.hide()
 
 
-    def focus(self):
-        self.widget.grab_focus()
 
 
     def resize_border(self, width):
@@ -446,6 +446,25 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
                        gtk.TEXT_WINDOW_TOP, gtk.TEXT_WINDOW_BOTTOM):
             self.widget.set_border_window_size(thingy, width)
 
+
+
+    focused = False
+
+
+    def focus(self):
+        if self.widget.is_focus():
+            print "I am the focus! So I will bypass etc."
+            return self._cbFocus(None, None)
+        self.widget.grab_focus()
+
+
+    def _cbSized(self, thing, alloc):
+        # When a new Node is created it'll get the focus event while
+        # the size and position are still -1, -1. So we implement this
+        # to scroll to the widget when that happens.
+        if self.widget.is_focus() and not self.focused:
+            print "_cbSized to tha fizocus"
+            self._cbFocus(None,None)
 
     def _cbFocus(self, thing, direction):
         print "hey someone got focus man", id(self)
@@ -466,10 +485,18 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 ##        return
 
         # XXX make this optional
+        print "y! x!", alloc.y, alloc.x
+        if alloc.y == -1 or alloc.x == -1:
+            self.focused = False
+            return
+        self.focused = True
         for pos, size, windowsize, adj in [
-            (alloc.y, alloc.height, height, self.controller.cscroll.get_vadjustment()),
-            (alloc.x, alloc.width, width, self.controller.cscroll.get_hadjustment())
+            (alloc.y, alloc.height, height,
+             self.controller.cscroll.get_vadjustment()),
+            (alloc.x, alloc.width, width,
+             self.controller.cscroll.get_hadjustment())
             ]:
+
             if pos < adj.value or pos+size > adj.value + adj.page_size:
                 adj.set_value(pos+(size/2) - windowsize/2)
                 #adj.set_value(min(pos, adj.upper - adj.page_size))
@@ -581,7 +608,8 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
     def key_Return(self):
         if self.editing:
-            self.node.setContent(self.buffer.get_text(*self.buffer.get_bounds()))
+            self.node.setContent(
+                self.buffer.get_text(*self.buffer.get_bounds()))
             self.immute()
         else:
             # iface?
@@ -597,6 +625,9 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.buffer.set_text(self.oldText)
         del self.oldText
         #reactor.callLater(0, self.focus)
+
+    def key_ctrl_l(self):
+        self.focus()
 
 
 
