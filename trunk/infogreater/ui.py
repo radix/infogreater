@@ -60,8 +60,6 @@ class GreatUI(gtk2util.GladeKeeper):
         self.lineGC = gtk.gdk.GC(self.canvas.window)
         self.lineGC.set_rgb_fg_color(BLACK)
         #self.lineGC.line_width = 2
-        self.clearGC = gtk.gdk.GC(self.canvas.window)
-        self.clearGC.set_rgb_fg_color(WHITE)
         self.filename = DEFAULT_FILE
 
         if os.path.exists(DEFAULT_FILE):
@@ -393,7 +391,7 @@ class SimpleNodeUI(BaseNodeUI):
             elif event.keyval == keysyms.Left:
                 self.moveLeft()
             elif event.keyval == keysyms.Return:
-                self.parent.addChild() #XXX ifacebraking
+                self.parent.addChild(after=self) #XXX ifacebraking
         elif self.editing:
             if event.keyval == keysyms.Escape:
                 self.cancelEdit()
@@ -443,13 +441,19 @@ class SimpleNodeUI(BaseNodeUI):
         #reactor.callLater(0, self.widget.grab_focus)
 
 
-    def addChild(self):
+    def addChild(self, after=None):
         newnode = node.SimpleNode()
-        self.node.putChild(newnode)
         newbox = INodeUI.fromNode(newnode, self.controller, self.canvas, parent=self)
-        self.childBoxes.append(newbox)
+        if after is not None:
+            index = self.node.children.index(after.node)+1
+            self.node.children.insert(index, newnode)
+            self.childBoxes.insert(index, newbox)
+        else:
+            self.node.putChild(newnode)
+            self.childBoxes.append(newbox)
+            index = -1
         self.controller.redisplay()
-        self.childBoxes[-1].widget.grab_focus()
+        self.childBoxes[index].widget.grab_focus()
 
 
 
