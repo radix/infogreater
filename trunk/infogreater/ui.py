@@ -544,6 +544,8 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.addChild()
         return STOP_EVENT
 
+    key_ctrl_i = key_Insert
+
 
     def key_ctrl_e(self):
         """

@@ -21,7 +21,7 @@ Keyboard controls
     Shift-up: Move the selected node up (before its previous sibling)
     Shift-down: Move the selected node down (after its next sibling)
 
-    Insert: Create a new child
+    Insert, Ctrl-i: Create a new child
     Enter: Create a new sibling after the current one
 
 Written by Christopher Armstrong:
