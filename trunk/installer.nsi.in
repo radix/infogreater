@@ -57,6 +57,7 @@ Section "-GTKInstall" SECGTK01
   ExecWait "$TEMP\${GTK_INSTALLER}"
   Delete "$TEMP\${GTK_INSTALLER}"
   ShowWindow $HWNDPARENT SW_SHOWNORMAL
+  BringToFront
 SectionEnd
 
 Section "MainSection" SEC01
