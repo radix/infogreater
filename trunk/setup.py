@@ -9,7 +9,13 @@ setup_args = {}
 
 try:
     import py2exe
-    setup_args['windows'] = ['bin/infogreater', ]
+    setup_args['console'] = ['bin/infogreater', ]
+    setup_args['options'] = dict(py2exe={'excludes': ['_gtk', 
+                                                      'gobject', 
+                                                      'glade',
+                                                      'gtk',
+                                                      ], 
+                                         })
 except ImportError:
     pass
 

@@ -1,0 +1,21 @@
+# build IG into an NSIS installer
+
+NSISDIR = C:\Program Files\NSIS
+NSIS = $NSISDIR\makensis.exe
+@from twisted.python import util
+@import gobject
+PYGTKDIR = `util.sibpath(gobject.__file__, '')`
+
+version = 0.0.3
+
+all: InfoGreater-$(version)-Setup.exe
+    :print :Done with all.
+
+InfoGreater-$(version)-Setup.exe:
+    :sys {f} python setup.py py2exe
+    :copy {r}{f} "$(PYGTKDIR)" dist/
+    :sys "$(NSIS)" installer.nsi
+
+clean:
+    :del {r}{f} dist build InfoGreater-$(version)-Setup.exe
+

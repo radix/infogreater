@@ -6,6 +6,15 @@ if string.find(os.path.abspath(sys.argv[0]), os.sep+'InfoGreater') != -1:
     sys.path.insert(0, os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]), os.pardir, os.pardir)))
 ### end of preamble
 
+# py2exe hacks to find gtk and pygtk
+if sys.frozen:
+    _d = dict(PATH=os.environ['PATH'], 
+              gtkbin=r'C:\Program Files\Common Files\GTK\2.0\bin',
+              gtklib=r'C:\Program Files\Common Files\GTK\2.0\lib',
+              SEP=os.pathsep)
+    os.environ['PATH'] = "%(PATH)s%(SEP)s%(gtkbin)s%(SEP)s%(gtklib)s" % _d
+    sys.path.append(os.path.join(os.path.dirname(sys.executable), 'gtk-2.0'))
+
 from twisted.internet import gtk2reactor
 gtk2reactor.install()
 
