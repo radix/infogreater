@@ -115,7 +115,6 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         reactor.callLater(0, self.getTreeIter)
 
         self.widget.set_editable(False)
-        print "SET EDITABLE! Now attaching crap!!"
         self.widget.connect('key-press-event', self._cbGotKey)
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
@@ -259,11 +258,11 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         if self.editing: return
         print "HEY"
         d = base.presentChoiceMenu("Which node type do you want to create?",
-                                   [x.__name__ for x in base.nodeTypes])
+                                   [x[0] for x in base.nodeTypes])
         d.addCallback(self._cbGotNodeChoice)
 
     def _cbGotNodeChoice(self, index):
-        factory = base.nodeTypes[index]
+        factory = base.nodeTypes[index][1]
         self.addChild(factory(self.controller))
 
 
@@ -307,10 +306,12 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
 
     def _shift(self, modder):
         # XXX encapsulation
-        i = self.parent.children.index(self)
+        sibs = INode(self).parent.children
+        i = sibs.index(INode(self))
+        print "moving from",i,"to",i+modder
         # XXX sucks to this
-        box = self.parent.children.pop(i)
-        self.parent.children.insert(i+modder, box)
+        box = sibs.pop(i)
+        sibs.insert(i+modder, box)
         self.controller.redisplay()
         self.focus()
 

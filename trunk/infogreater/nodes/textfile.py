@@ -23,7 +23,6 @@ class TextFileNode(simple.SimpleNode):
 
 
     def load(self, inf=None):
-        print "LOADING", self.filename, "!!!!!!!!"
         if inf is None:
             if os.path.exists(self.filename):
                 inf = open(self.filename)

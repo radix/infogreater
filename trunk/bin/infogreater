@@ -15,12 +15,13 @@ args = []
 if len(sys.argv) > 1:
     args.append(sys.argv[1])
 
-# This is pretty horrible, but eh, it doesn't REALLY matter until I
-# want to start allowing third-party plugins, or if any of my plugins
-# do expensive things on import.
+# XXX This is pretty horrible, but eh, it doesn't REALLY matter until
+# I want to start allowing third-party plugins, or if any of my
+# plugins do expensive things on import.
 
 from infogreater.nodes import simple, filesystem, textfile, base
-base.nodeTypes = [textfile.makeText, filesystem.makeFileSystem]
+base.nodeTypes = [("Text File", textfile.makeText),
+                  ("File System Browser", filesystem.makeFileSystem)]
     
 ui.GreatUI(*args)
 

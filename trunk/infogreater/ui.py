@@ -149,8 +149,6 @@ class GreatUI(gtk2util.GladeKeeper):
         self.redisplay()
 
 
-
-
     def on_open_activate(self, thing):
 
         def _cb_got_filename(button):
