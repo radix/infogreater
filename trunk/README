@@ -16,7 +16,8 @@ Keyboard controls
 
     Ctrl-e: edit current node
     (Edit mode:
-      Escape: Cancel editing
+      Escape: Cancel editing (If the node is new and hasn't been
+                              committed yet, it will be deleted)
       Shift-Enter: Insert a newline
       Enter: Commit editing
     )

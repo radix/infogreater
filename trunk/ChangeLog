@@ -4,6 +4,8 @@
 	automatically put into edit mode.
 	* UI: Nodes now have a minimum width, so empty nodes aren't so
 	weird looking any more.
+	* UI: If you hit Escape on a newly-created node that hasn't yet
+	been committed, it will be deleted.
 
 2004-07-17  Christopher Armstrong  <radix@twistedmatrix.com>
 

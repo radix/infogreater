@@ -93,7 +93,7 @@ def makeSimple(controller, parent=None, content=""):
 STOP_EVENT = True # Just to make it more obvious.
 
 class SimpleNodeUI(base.BaseNodeUI):
-    editing = False
+    editing = new = False
 
     def immute(self):
         self.widget.set_editable(False)
@@ -142,7 +142,9 @@ class SimpleNodeUI(base.BaseNodeUI):
         Insert a simple child node.
         """
         newnode = self.addChild()
-        INodeUI(newnode).startEdit()
+        nodeui = INodeUI(newnode)
+        nodeui.startEdit()
+        nodeui.new = True
         return STOP_EVENT
 
     key_ctrl_i = key_Insert
@@ -157,10 +159,13 @@ class SimpleNodeUI(base.BaseNodeUI):
             INode(self).setContent(
                 self.buffer.get_text(*self.buffer.get_bounds()))
             self.immute()
+            self.new = False
         else:
             # iface?
             newnode = self.uiparent().addChild(after=INode(self))
-            INodeUI(newnode).startEdit()
+            nodeui = INodeUI(newnode)
+            nodeui.startEdit()
+            nodeui.new = True
 
 
     def key_shift_I(self):
@@ -191,23 +196,28 @@ class SimpleNodeUI(base.BaseNodeUI):
         self.widget.modify_bg(gtk.STATE_NORMAL, base.DGREEN)
         self.editing = True
 
+
     def key_ctrl_x(self):
         """
         cut
         """
         if self.editing: return
-        snode = INode(self)
-        # XXX YOW encapsulation-breaking
-        i = snode.parent.children.index(snode)
-        del INode(self).parent.children[i]
-        self.destroyChildren()
-        self.controller.redisplay()
-        self.uiparent().focus()
+        self.uiparent().destroyChild(self)
         base.cuts.append(self)
-        # XXX - there will be other places that destroy nodes soon; refactor
-        # self.parent.lostChild() or something
-        if not INode(self).parent.children:
-            self.uiparent().resize_border(1)
+
+
+    def destroyChild(self, child):
+        # XXX this Really needs to be on the model, + model-changed
+        # events.
+        snode = INode(self)
+        i = snode.children.index(INode(child))
+        del snode.children[i]
+        INodeUI(child).destroyChildren()
+        self.controller.redisplay()
+        self.focus()
+
+        if not snode.children:
+            self.resize_border(1)
 
 
     def key_ctrl_v(self):
@@ -240,4 +250,6 @@ class SimpleNodeUI(base.BaseNodeUI):
         self.immute()
         self.buffer.set_text(self.oldText)
         del self.oldText
+        if self.new:
+            self.uiparent().destroyChild(self)
         #reactor.callLater(0, self.focus)
