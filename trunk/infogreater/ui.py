@@ -25,7 +25,12 @@ __metaclass__ = type
 class XML(glade.XML):
     __getitem__ = glade.XML.get_widget
 
-#XXX - adapting each interface in a node to an IGUI thing?
+
+# XXX - pasting is fubared
+# XXX - Scroll the canvas to the currently-focused node, always.
+# FFF - adapt each interface in a node to an IGUI thing
+# FFF - Other node types! UI for creating them?
+# FFF - separate view for cut-buffer
 
 class GreatUI(gtk2util.GladeKeeper):
 
@@ -376,13 +381,8 @@ STOP_EVENT = True # Just to make it more obvious.
 class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
 
-    # XXX - Some visual distinction for nodes-with-children
-    # XXX - Conversion to other Node types ?
-    # XXX - cut'n'paste
-    # XXX - separate view for cut-buffer?
-    # XXX - Scroll the canvas to the currently-focused node, always.
 
-
+    
     def _makeWidget(self):
         self.widget = gtk.TextView()
 
@@ -427,6 +427,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
 
     def addChild(self, newnode=None, after=None):
+        self.resize_border(2)
         if newnode is None:
             newnode = node.SimpleNode()
         newbox = INodeUI.fromNode(newnode, self.controller, self.canvas, parent=self)
@@ -467,6 +468,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         for x in self.childBoxes:
             x.destroy_widgets()
 
+
     def key_ctrl_x(self):
         if self.editing: return
         # XXX YOW encapsulation-breaking
@@ -478,6 +480,10 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.controller.redisplay()
         self.parent.widget.grab_focus()
         cuts.append(self.node)
+        # XXX - there will be other places that destroy nodes soon; refactor 
+        if not self.parent.childBoxes:
+            # XXX - encapsulation :(
+            self.parent.resize_border(1)
 
 
     def key_ctrl_v(self):
