@@ -122,10 +122,6 @@ class TextNodeXML(base.BaseNodeXML):
     # Facet and ignore XMLObject's __init__
     tagName = 'TextFile'
 
-    def getXMLState(self):
-        return self.getAttrs(), self.getChildren()
-
-
     def getAttrs(self):
         nodeui = INodeUI(self)
         node = INode(self)

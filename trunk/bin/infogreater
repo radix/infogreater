@@ -20,7 +20,7 @@ if len(sys.argv) > 1:
 # do expensive things on import.
 
 from infogreater.nodes import simple, filesystem, textfile, base
-base.nodeTypes = [textfile.makeText, filesystem.FileSystemNode]
+base.nodeTypes = [textfile.makeText, filesystem.makeFileSystem]
     
 ui.GreatUI(*args)
 

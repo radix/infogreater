@@ -91,8 +91,7 @@ class GreatUI(gtk2util.GladeKeeper):
             parent = self.root
         if not parent.expanded: return
         # XXX - make this recursive on the node
-        for box in base.INode(parent).getChildren():
-            box = base.INodeUI(box)
+        for box in base.INodeUI(parent).uichildren():
             # XXX encapsulation
             pwidth, pheight = parent.widget.size_request()
             bheight = box.widget.size_request()[1]

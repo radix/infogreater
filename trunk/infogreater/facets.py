@@ -14,7 +14,7 @@ class Faceted(dict):
         copy.update(self)
         return copy
 
-    def __repr__(self):
+    def __str__(self):
         if IReprable in self:
             return IReprable(self).__repr__()
         return 'Faceted('+super(Faceted, self).__repr__()+')'
@@ -28,7 +28,9 @@ class Facet(object):
             return self.original.__conform__(i)
 
     def __repr__(self):
-        return "<%s facet of %r>" % (self.__class__.__name__, self.original)
+        if hasattr(self, 'original'):
+            return "<%s facet of %r>" % (self.__class__.__name__, self.original)
+        return object.__repr__(self)
 
 if __name__ == '__main__':
 

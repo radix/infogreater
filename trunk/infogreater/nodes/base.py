@@ -111,7 +111,7 @@ class BaseNodeUI(facets.Facet):
         self.widget.hide()
         if self.widget.parent is None:
             print "Re-Putting", self
-            self.controller.canvas.put(self.widget, 0,0)
+            self.controller.canvas.put(self.widget, 0, 0)
         self.controller.canvas.move(self.widget, X, Y)
         self.X = X
         self.Y = Y

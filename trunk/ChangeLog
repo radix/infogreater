@@ -1,3 +1,8 @@
+2004-07-10  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* FileSystem: Wow, the filesystem browser actually kind of
+	works. shift-I, select makeFileSystem.
+
 2004-07-09  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* Persistence: A big rewrite, originally spurred by the need for a

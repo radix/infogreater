@@ -98,9 +98,12 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
     editing = False
 
     def _makeWidget(self):
+        if self.widget is not None:
+            print "Booo Hoooooo, I already have a widget :-(((", self
+            return
         self.widget = gtk.TextView()
         
-        width = INode(self).getChildren() and 2 or 1
+        width = self.hasChildren() and 2 or 1 
         self.resize_border(width)
 
         self.widget.modify_bg(gtk.STATE_NORMAL, base.BLACK)
@@ -120,6 +123,9 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         #print "PUTTING", self.widget
         self.controller.canvas.put(self.widget, 0, 0)
         self.widget.hide()
+
+    def hasChildren(self):
+        return INode(self).getChildren() and 2 or 1
 
 
     def getTreeIter(self):
@@ -347,9 +353,9 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         if self.editing: return
         if not self.expanded:
             self.toggleShowChildren()
-        children = INode(self).children
+        children = self.uichildren()
         if children:
-            INodeUI(children[len(children)//2]).focus()
+            children[len(children)//2].focus()
         return STOP_EVENT
 
     key_ctrl_f = key_Right
@@ -380,27 +386,27 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         # F - G - H <-- should end up here.
         
         if self.editing: return
-        if self.uiparent():
-            index = INode(self).parent.children.index(INode(self))+1
-            if len(INode(self).parent.children) <= index:
-                #index = 0
-                return
-            
-            INodeUI(INode(self).parent.children[index]).focus()
+        if not self.uiparent(): return
+        sibs = self.uiparent().uichildren()
+        index = sibs.index(self)+1
+        if len(sibs) <= index:
+            #index = 0
+            return
+
+        sibs[index].focus()
 
     key_ctrl_n = key_Down
 
     def key_Up(self):
         # XXX - Same XXX as key_Down, except reversed.
         if self.editing: return
-        print ":((((("
-        print INode(self)
-        print INode(self).parent.children
-        print "))))):"
-        i = INode(self).parent.children.index(INode(self))-1
-        if i == -1: return
-        if self.uiparent():
-            INodeUI(INode(self).parent.children[i]).focus()
+        if not self.uiparent(): return
+
+        sibs = self.uiparent().uichildren()
+        i = sibs.index(self)-1
+        if i == -1:
+            return
+        sibs[i].focus()
 
     key_ctrl_p = key_Up
 
