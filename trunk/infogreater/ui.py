@@ -27,18 +27,14 @@ class XML(glade.XML):
 
 # TODO:
 #   *Keyboard navigation
-#     *Highlight current node
-#     *rightarrow : expand children
-#     *enter : expand properties
-#     *insert : new child
-
+#    *more ideas
 #   *Simple nodes to make the common case of FreeMind-like usage acceptable.
-#    *Look up INodeUI implementors as adapters of Nodes
+#    *Look up INodeUI implementors as adapters of Nodes [Done, but iface needs bettered]
 #   *Lines between nodes
-#   *formless - mehemeh really crappy support.
-#    *Let formless do more... maybe.
+#   *adapting each interface in a node to an IGUI thing?
 #   *"caching" of nodes and properties is either too lazy or too
 #     strict. fix! facilitate totally dynamic stuff!
+#    *What??? I don't know what this point is talking about.
 #   *Obsolete manual editing of this TODO list
 
 class GreatUI(gtk2util.GladeKeeper):
@@ -49,34 +45,39 @@ class GreatUI(gtk2util.GladeKeeper):
 
 
     def __init__(self):
-        self.glade = XML(self.gladefile, 'MainWindow')
+        self.w = XML(self.gladefile, 'MainWindow')
 
-        ## ripped from gtk2util.py
-        # mold can go away when we get a newer pygtk (post 1.99.14)
         mold = {}
         for k in dir(self):
             mold[k] = getattr(self, k)
-        self.glade.signal_autoconnect(mold)
-        self._setWidgets()
-        ## end rip
+        self.w.signal_autoconnect(mold)
 
-        # bah, bah, glade is lame.
-        self._NodeFrame.destroy()
-        #self._SmallNode.destroy()
+        self.window = self.w['MainWindow']
+        self.canvas = self.w['Canvas']
+        self.w['NodeFrame'].destroy()
 
-        self._MainWindow.connect('destroy', gtk.mainquit)
-
+        self.window.connect('destroy', gtk.mainquit)
+        self.canvas.connect('expose-event', lambda *a: self.drawLines())
+        self.lineGC = gtk.gdk.GC(self.canvas.window)
+        self.lineGC.set_rgb_fg_color(BLACK)
         self.filename = DEFAULT_FILE
 
         if os.path.exists(DEFAULT_FILE):
             self.basenode = cPickle.load(open(DEFAULT_FILE, 'rb'))
         else:
             self.basenode = node.SimpleNode()
-        self.root = INodeUI.fromNode(self.basenode, self, self._Canvas)
+        self.root = INodeUI.fromNode(self.basenode, self, self.canvas)
         self.redisplay()
         self.root.widget.grab_focus()
-        
 
+
+    def drawLines(self, parent=None):
+        if parent is None:
+            parent = self.root
+        for box in parent.childBoxes:
+            self.canvas.window.draw_line(self.lineGC, parent.X, parent.Y, box.X, box.Y)
+            self.drawLines(box)
+        
     def redisplay(self):
         if not hasattr(self, 'root'):
             reactor.callLater(0, self.redisplay)
@@ -92,10 +93,10 @@ class GreatUI(gtk2util.GladeKeeper):
 
 
     def _load(self, node):
-        for x in self._Canvas.get_children():
+        for x in self.canvas.get_children():
             x.destroy()
         self.basenode = node
-        self.root = INodeUI.fromNode(self.basenode, self, self._Canvas)
+        self.root = INodeUI.fromNode(self.basenode, self, self.canvas)
         self.redisplay()
 
 
@@ -264,6 +265,8 @@ class BaseNodeUI:
 
         self.widget.hide()
         self.canvas.move(self.widget, X, Y)
+        self.X = X
+        self.Y = Y
         self.widget.show()
 
         if not (self.expanded and self.childBoxes):
@@ -308,6 +311,9 @@ class BaseNodeUI:
 
 WHITE = gtk.gdk.color_parse('#FFFFFF')
 LBLUE = gtk.gdk.color_parse('#AAAAFF')
+BLUE = gtk.gdk.color_parse('#0000FF')
+GREEN = gtk.gdk.color_parse('#00FF00')
+DGREEN = gtk.gdk.color_parse('#00AA00')
 BLACK = gtk.gdk.color_parse('#000000')
 
 class SimpleNodeUI(BaseNodeUI):
@@ -333,7 +339,7 @@ class SimpleNodeUI(BaseNodeUI):
     def resize(self):
         # XXX this *1.4 is sucky and buggy. I shouldn't need to mult at _all_!
         self.widget.set_width_chars(
-            len(self.widget.get_text())*1.4
+            int(len(self.widget.get_text())*1.4)
             )
 
     def _cbFocus(self, thing, direction):
@@ -376,6 +382,8 @@ class SimpleNodeUI(BaseNodeUI):
                 self.moveRight()
             elif event.keyval == keysyms.Left:
                 self.moveLeft()
+            elif event.keyval == keysyms.Return:
+                self.parent.addChild() #XXX ifacebraking
         elif self.editing:
             if event.keyval == keysyms.Escape:
                 self.cancelEdit()
@@ -411,7 +419,7 @@ class SimpleNodeUI(BaseNodeUI):
         self.oldText = self.widget.get_text()
         self.widget.set_editable(True)
         self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
-        self.widget.modify_bg(gtk.STATE_NORMAL, LBLUE)
+        self.widget.modify_bg(gtk.STATE_NORMAL, DGREEN)
         #reactor.callLater(0, self.widget.grab_focus)
         self.editing = True
 
