@@ -16,6 +16,12 @@ branches/xml-faceted-rewrite/infogreater/test/*.ig
 branches/xml-faceted-rewrite/infogreater/test/*.mm
 branches/xml-faceted-rewrite/infogreater/test/*.pyc
 branches/xml-faceted-rewrite/infogreater/test/*.tmp
+tags/release-0.0.3/*.bak
+tags/release-0.0.3/*.gladep
+tags/release-0.0.3/*.ig
+tags/release-0.0.3/*.mm
+tags/release-0.0.3/*.pyc
+tags/release-0.0.3/*.tmp
 trunk/*.bak
 trunk/*.gladep
 trunk/*.ig

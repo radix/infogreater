@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+
+### Twisted Preamble
+import sys, os, string
+if string.find(os.path.abspath(sys.argv[0]), os.sep+'InfoGreater') != -1:
+    sys.path.insert(0, os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]), os.pardir, os.pardir)))
+### end of preamble
+
+sys.exit("Exiting! This program is buggy.")
+
+from infogreater import freemind
+
+import cPickle
+
+freemind_filename = sys.argv[1]
+infogreater_filename = sys.argv[2]
+
+cPickle.dump(freemind.freemindToNodes(freemind_filename)[0],
+             open(infogreater_filename, 'w'))
