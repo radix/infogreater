@@ -1,3 +1,5 @@
+from __future__ import division
+
 import gtk
 from gtk import keysyms
 
@@ -10,7 +12,7 @@ class INode(interface.Interface):
     Not sure about this. Right now nodes are adapted to this when
     setting parents and children.
     """
-    
+
 
 
 class INodeUI(interface.Interface):
@@ -110,10 +112,10 @@ class BaseNodeUI(facets.Facet):
         assert Y >= 0, (X, Y)
 
         self.widget.hide()
-        print "HIIIIIII"
-        print self.widget.parent
+        if self.widget.parent is None:
+            print "Re-Putting", self
+            self.controller.canvas.put(self.widget, 0,0)
         self.controller.canvas.move(self.widget, X, Y)
-        print "THEEEEEERE"
         self.X = X
         self.Y = Y
 
@@ -129,7 +131,6 @@ class BaseNodeUI(facets.Facet):
         # Shift child up by my *total*-height div 2. (so the parent is
         # in the Y-middle of the children).
         childY = Y - (self.height // 2)
-
 
         childBoxes = self.uichildren()
         first = childBoxes[0]
@@ -204,7 +205,7 @@ for name in dir(keysyms):
 
 class FancyKeyMixin:
     def _cbGotKey(self, thing, event):
-        print event.keyval, repr(event.string), event.state, repr(keymap[event.keyval])
+
         mods = []
         if event.state & gtk.gdk.CONTROL_MASK:
             mods.append('ctrl')
@@ -216,7 +217,7 @@ class FancyKeyMixin:
             name = 'key_%s_%s' % (mod, keyname)
         else:
             name = 'key_%s' % keyname
-        print name
+        print event.keyval, repr(event.string), event.state, repr(keymap[event.keyval]), name
         m = getattr(self, name, None)
         if m:
             return m()
@@ -247,7 +248,3 @@ def presentChoiceMenu(question, choices):
 
     return d
 
-def fromNode(node, controller, parent=None):
-    nui = base.INodeUI(node)
-    nui.init(controller, parent)
-    return nui

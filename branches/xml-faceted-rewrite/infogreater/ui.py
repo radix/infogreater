@@ -91,8 +91,8 @@ class GreatUI(gtk2util.GladeKeeper):
             parent = self.root
         if not parent.expanded: return
         # XXX - make this recursive on the node
-        for box in base.INode(parent.original).getChildren():
-            box = base.INodeUI(box.original)
+        for box in base.INode(parent).getChildren():
+            box = base.INodeUI(box)
             # XXX encapsulation
             pwidth, pheight = parent.widget.size_request()
             bheight = box.widget.size_request()[1]
@@ -132,9 +132,10 @@ class GreatUI(gtk2util.GladeKeeper):
             x.destroy()
         root = ctx.call({'controller': self},
                         xmlobject.fromXML, open(fn, 'rb').read())
-        self.root = base.INodeUI(root.original)
-        print "ROOT AM", repr(root)
+        self.root = base.INodeUI(root)
+        print "ROOT AM", repr(root.original)
         self.redisplay()
+
 
     def loadNode(self, node):
         for x in self.canvas.get_children():

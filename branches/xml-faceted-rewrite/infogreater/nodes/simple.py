@@ -53,9 +53,7 @@ class SimpleNodeXML(facets.Facet, xmlobject.XMLObject):
 
     def setXMLState(self, attrs, children):
         node = INode(self)
-        node.parent = INode(
-            getattr(ctx.get(xmlobject.IXMLParent), 'original', None),
-            None)
+        node.parent = INode(ctx.get(xmlobject.IXMLParent), None)
         node.content = attrs['content']
         node.children = [INode(x) for x in children or []]
 
@@ -70,19 +68,19 @@ def makeSimpleBase():
     faced[INode] = SimpleNode(faced)
     faced[INodeUI] = SimpleNodeUI(faced)
     faced[xmlobject.IXMLObject] = SimpleNodeXML(faced)
+    faced[facets.IReprable] = INode(faced)
     return faced
 
 # XXX Use plugins or context something
 xmlobject.unmarmaladerRegistry['SimpleNode'] = makeSimpleBase
 
 
-def makeSimple(controller, parent):
+def makeSimple(controller):
     simp = makeSimpleBase()
     nodeui = INodeUI(simp)
     nodeui.controller = controller
     nodeui._makeWidget()
     node = INode(simp)
-    node.parent = INode(parent)
     return simp
 
 STOP_EVENT = True # Just to make it more obvious.
@@ -100,9 +98,8 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         self.buffer = self.widget.get_buffer()
         self.buffer.set_text(INode(self).getContent())
 
-        # bleh :( must delay treeing because this is called from
-        # __setstate__ before my parent's __setstate__ has been called
-
+        # bleh :( must delay treeing because _makeWidget can be called
+        # before my parent has been fully unserialized.
         reactor.callLater(0, self.getTreeIter)
 
         self.widget.set_editable(False)
@@ -112,7 +109,7 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         self.widget.connect('size-allocate', self._cbSized)
         self.widget.connect('populate-popup', self._cbPopup)
         print "PUTTING", self.widget
-        self.controller.canvas.put(self.widget, 0,0)
+        self.controller.canvas.put(self.widget, 0, 0)
         self.widget.hide()
 
 
@@ -214,12 +211,17 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         self.controller.redisplay()
         self.focus()
 
+    def placedUnder(self, parent):
+        INode(self).parent = INode(parent)
+        self._makeWidget()
+
 
     def addChild(self, newnode=None, after=None):
         self.resize_border(2)
         if newnode is None:
-            newnode = makeSimple(self.controller, self)
+            newnode = makeSimple(self.controller)
         newnode = INode(newnode)
+        INodeUI(newnode).placedUnder(self)
         children = INode(self).children
         if after is not None:
             index = children.index(INode(after))+1
