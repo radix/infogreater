@@ -5,6 +5,14 @@ from distutils.command.install_data import install_data
 
 from os.path import join
 
+setup_args = {}
+
+try:
+    import py2exe
+    setup_args['windows'] = ['bin/infogreater', ]
+except ImportError:
+    pass
+
 # make sure data files are installed in the package dir
 class install_data_package(install_data):
     def finalize_options (self):
@@ -14,7 +22,7 @@ class install_data_package(install_data):
         install_data.finalize_options(self)
 
 
-setup(name="Infogreater",
+setup_args.update(dict(name="Infogreater",
       version="0.0.3",
       description="Infogreater is pseudo-mindmapping software",
       url="http://twistedmatrix.com/trac/infogreater",
@@ -28,4 +36,7 @@ setup(name="Infogreater",
                 },
       data_files=[('infogreater', [join('infogreater', 'info.glade')])
                   ],
-      )
+      ))
+if __name__ == '__main__':
+    setup(**setup_args)
+setup(**setup_args)

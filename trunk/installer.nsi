@@ -50,19 +50,12 @@ Section "MainSection" SEC01
   File "dist\SSL.pyd"
   File "dist\glade.pyd"
   File "dist\crypto.pyd"
-  File "dist\cBanana.pyd"
-  File "dist\win32file.pyd"
   File "dist\_winreg.pyd"
-  File "dist\win32pipe.pyd"
-  File "dist\win32api.pyd"
   File "dist\_sre.pyd"
   File "dist\select.pyd"
   File "dist\_socket.pyd"
   File "dist\_gtk.pyd"
-  File "dist\win32gui.pyd"
-  File "dist\win32process.pyd"
   File "dist\parser.pyd"
-  File "dist\win32event.pyd"
   File "dist\_ssl.pyd"
   File "dist\rand.pyd"
   File "dist\_zope_interface_coptimizations.pyd"
@@ -100,6 +93,7 @@ Section -AdditionalIcons
   CreateDirectory "$SMPROGRAMS\InfoGreater"
   CreateShortCut "$SMPROGRAMS\InfoGreater\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
   CreateShortCut "$SMPROGRAMS\InfoGreater\Uninstall.lnk" "$INSTDIR\uninst.exe"
+  CreateShortCut "$SMPROGRAMS\InfoGreater\InfoGreater.lnk" "$INSTDIR\infogreater.exe"
 SectionEnd
 
 Section -Post
