@@ -103,7 +103,7 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
             return
         self.widget = gtk.TextView()
         
-        width = self.hasChildren() and 2 or 1 
+        width = self.hasChildren() and 2 or 1
         self.resize_border(width)
 
         self.widget.modify_bg(gtk.STATE_NORMAL, base.BLACK)
@@ -115,6 +115,7 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         reactor.callLater(0, self.getTreeIter)
 
         self.widget.set_editable(False)
+        print "SET EDITABLE! Now attaching crap!!"
         self.widget.connect('key-press-event', self._cbGotKey)
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
@@ -125,9 +126,8 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         self.widget.hide()
 
     def hasChildren(self):
-        return INode(self).getChildren() and 2 or 1
-
-
+        return bool(INode(self).getChildren())
+        
     def getTreeIter(self):
         if hasattr(self, 'treeiter'):
             return self.treeiter

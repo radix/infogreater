@@ -14,7 +14,7 @@ from gtk import glade
 from gtkgoodies import tree
 
 from infogreater import util, facets, xmlobject
-from infogreater.nodes import base
+from infogreater.nodes import base, simple
 
 
 
@@ -68,7 +68,7 @@ class GreatUI(gtk2util.GladeKeeper):
         if os.path.exists(self.filename):
             self.loadFromXML(self.filename)
         else:
-            self.loadNode(simple.SimpleNode())
+            self.loadNew()
 
         # XXX HUGE HACK
 
@@ -123,24 +123,32 @@ class GreatUI(gtk2util.GladeKeeper):
 
     def on_new_activate(self, thing):
         self.filename = None
-        self.loadNode(simple.SimpleNode())
+        self.loadNew()
+
+
+    def loadNew(self):
+        self._destroyChildren()
+        nodeui = base.INodeUI(simple.makeSimple(self))
+        #nodeui._makeWidget()
+        self.root = nodeui
+        self.redisplay()
+
+    def _destroyChildren(self):
+        # NOTE: If you forget to destroy the children before loading a
+        # node, things will be wonky and none of the nodes will
+        # contain any text and will not receive input.
+        for x in self.canvas.get_children():
+            x.destroy()
 
 
     def loadFromXML(self, fn):
-        for x in self.canvas.get_children():
-            x.destroy()
+        self._destroyChildren()
         root = ctx.call({'controller': self},
                         xmlobject.fromXML, open(fn, 'rb').read())
         self.root = base.INodeUI(root)
-        #print "ROOT AM", repr(root.original)
         self.redisplay()
 
 
-    def loadNode(self, node):
-        for x in self.canvas.get_children():
-            x.destroy()
-        self.root = node
-        self.redisplay()
 
 
     def on_open_activate(self, thing):
