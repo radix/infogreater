@@ -44,6 +44,9 @@ class SimpleNode(facets.Facet):
 
 
 class SimpleNodeXML(base.BaseNodeXML):
+    """
+    A node that is editable, and can have children placed under it.
+    """
     tagName = 'SimpleNode'
 
     def getAttrs(self):
@@ -120,6 +123,8 @@ class SimpleNodeUI(base.BaseNodeUI):
         else:
             children.append(newnode)
             index = -1
+        if not self.expanded:
+            self.toggleShowChildren()
         self.controller.redisplay()
         # XXX some problem here, for some reason the focus isn't working
         self.uichildren()[index].focus()

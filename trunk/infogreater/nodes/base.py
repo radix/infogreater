@@ -9,12 +9,12 @@ from twisted.internet import defer
 from infogreater import facets, xmlobject
 from infogreater.gtkgoodies import keyhandler
 
+
 class INode(interface.Interface):
     """
     Not sure about this. Right now nodes are adapted to this when
     setting parents and children.
     """
-
 
 
 class INodeUI(interface.Interface):
@@ -263,6 +263,8 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
 
 
     def toggleShowChildren(self):
+        if not INode(self).hasChildren():
+            return
         self.expanded = not self.expanded
         if self.expanded:
             self.showChildren()
