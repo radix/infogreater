@@ -109,7 +109,7 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
             print "I already have a widget :-(((", self
             print "But I'll continue anyway!"
         self.widget = gtk.TextView()
-        
+
         width = INode(self).hasChildren() and 2 or 1
         self.resize_border(width)
 
@@ -146,15 +146,27 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
 
 
     def _cbSized(self, thing, alloc):
-        # When a new Node is created it'll get the focus event while
+        # A fun dance to make sure the TextView widget never gets
+        # thinner than 15 pixels.
+        if (self.buffer.get_char_count() == 0):
+            if alloc.width < 15:
+                print "setting minimum", alloc.width, alloc.height, self.widget.get_size_request()
+                self.widget.set_size_request(15, -1)
+        else:
+            if self.widget.get_size_request()[0] != -1:
+                print "unsetting minimum", self.widget.get_size_request()[0]
+                self.widget.set_size_request(-1,-1)
+
+        # When a new Node is created it'll get the focus even while
         # the size and position are still -1, -1. So we implement this
         # to scroll to the widget when it gets initially sized.
 
         # Also we want to recenter when the size changes from the user
         # typing into it.
+        
         if (self.widget.is_focus() and not self.sized) or self.editing:
-            #print "_cbSized to tha fizocus"
             self._recenter()
+
 
     def _cbFocus(self, thing, direction):
         """
