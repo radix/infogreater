@@ -1,13 +1,13 @@
 from __future__ import division
 
 import gtk
-from gtk import keysyms
 
 from zope import interface
 
 from twisted.internet import defer
 
 from infogreater import facets, xmlobject
+from infogreater.gtkgoodies import keyhandler
 
 class INode(interface.Interface):
     """
@@ -64,12 +64,21 @@ class INodeUI(interface.Interface):
         'Select' this node.
         """
 
+STOP_EVENT = True # Just to make it more obvious.
 
-class BaseNodeUI(facets.Facet):
+WHITE = gtk.gdk.color_parse('#FFFFFF')
+LBLUE = gtk.gdk.color_parse('#AAAAFF')
+BLUE = gtk.gdk.color_parse('#0000FF')
+GREEN = gtk.gdk.color_parse('#00FF00')
+DGREEN = gtk.gdk.color_parse('#00AA00')
+BLACK = gtk.gdk.color_parse('#000000')
+
+cuts = []
+
+class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
     """
-    Make sure subclasses define:
-    attr widget: The outermost widget.
-    meth _makeWidget: etc
+    I'm a node that is composed of a single TextView widget.
+    I am huge. I will need to be refactored.
     """
     
     __implements__ = (INodeUI,)
@@ -81,6 +90,11 @@ class BaseNodeUI(facets.Facet):
 
     widget = None
 
+    sized = False
+
+    # XXX I guess this shouldn't be required, but navigation-keys
+    # check it. Probably redefine in Simple.. .maybe
+    editing = False
 
     def uiparent(self):
         return INodeUI(INode(self).parent, None)
@@ -88,6 +102,104 @@ class BaseNodeUI(facets.Facet):
     def uichildren(self):
         return [INodeUI(x)
                 for x in INode(self).getChildren()]
+
+
+    def _makeWidget(self):
+        if self.widget is not None:
+            print "I already have a widget :-(((", self
+            print "But I'll continue anyway!"
+        self.widget = gtk.TextView()
+        
+        width = self.hasChildren() and 2 or 1
+        self.resize_border(width)
+
+        self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
+        self.buffer = self.widget.get_buffer()
+        self.buffer.set_text(INode(self).getContent())
+
+        # bleh :( must delay treeing because _makeWidget can be called
+        # before my parent has been fully unserialized.
+##        reactor.callLater(0, self.getTreeIter)
+
+        self.widget.set_editable(False)
+        self.widget.connect('key-press-event', self._cbGotKey)
+        self.widget.connect('focus-in-event', self._cbFocus)
+        self.widget.connect('focus-out-event', self._cbLostFocus)
+        self.widget.connect('size-allocate', self._cbSized)
+        self.widget.connect('populate-popup', self._cbPopup)
+        #print "PUTTING", self.widget
+        self.controller.canvas.put(self.widget, 0, 0)
+        self.widget.hide()
+
+    def resize_border(self, width):
+        for thingy in (gtk.TEXT_WINDOW_LEFT, gtk.TEXT_WINDOW_RIGHT,
+                       gtk.TEXT_WINDOW_TOP, gtk.TEXT_WINDOW_BOTTOM):
+            self.widget.set_border_window_size(thingy, width)
+
+
+    def _cbPopup(self, textview, menu):
+        print "HEY POPUP", menu
+
+
+    def focus(self):
+        # XXX I don't remember why this does this.
+        if self.widget.is_focus():
+            #print "I am the focus! So I will bypass etc."
+            return self._recenter()
+        self.widget.grab_focus()
+
+
+    def _cbSized(self, thing, alloc):
+        # When a new Node is created it'll get the focus event while
+        # the size and position are still -1, -1. So we implement this
+        # to scroll to the widget when it gets initially sized.
+
+        # Also we want to recenter when the size changes from the user
+        # typing into it.
+        if (self.widget.is_focus() and not self.sized) or self.editing:
+            #print "_cbSized to tha fizocus"
+            self._recenter()
+
+    def _cbFocus(self, thing, direction):
+        """
+        Set the node to blue and recenter to it.
+        """
+        # The reason this modify_base is here instead of in _recenter
+        # is that this call triggers a size-event: _recenter is called
+        # from the size-event handler (_cbSized), so we have to avoid
+        # the infinite loop.
+        self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+        return self._recenter()
+
+    def _recenter(self):
+        """
+        Position the canvas so that this node is in the center.
+        """
+
+        alloc = self.widget.get_allocation()
+        width, height = self.controller.cscroll.window.get_geometry()[2:4]
+
+        # XXX some horrible hackiness to avoid infinite event-recursion.
+        if alloc.y == -1 or alloc.x == -1:
+            self.sized = False
+            return
+        self.sized = True
+
+        for pos, size, windowsize, adj in [
+            (alloc.y, alloc.height, height,
+             self.controller.cscroll.get_vadjustment()),
+            (alloc.x, alloc.width, width,
+             self.controller.cscroll.get_hadjustment())
+            ]:
+
+            if pos < adj.value or pos+size > adj.value + adj.page_size:
+                adj.set_value(pos+(size/2) - windowsize/2)
+
+
+    def _cbLostFocus(self, thing, thing2):
+        self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
+        if self.editing:
+            self.cancelEdit()
 
 
     def calculateHeight(self):
@@ -184,6 +296,89 @@ class BaseNodeUI(facets.Facet):
             x.destroyChildren()
 
 
+    ## KEYS
+
+    def key_ctrl_l(self):
+        self.focus()
+
+
+    # Navigation
+
+    def key_space(self):
+        if self.editing: return
+        self.toggleShowChildren()
+        self.focus()
+
+
+    def key_shift_Up(self):
+        return self._shift(-1)
+
+
+    def key_shift_Down(self):
+        return self._shift(+1)
+
+
+    def key_Right(self):
+        if self.editing: return
+        if not self.expanded:
+            self.toggleShowChildren()
+        children = self.uichildren()
+        if children:
+            children[len(children)//2].focus()
+        return STOP_EVENT
+
+    key_ctrl_f = key_Right
+
+
+    def key_Left(self):
+        if self.editing: return
+        parent = INode(self).parent
+        if parent:
+            INodeUI(parent).focus()
+        return STOP_EVENT
+
+    key_ctrl_b = key_Left
+
+    def key_Down(self):
+
+        # XXX - if there's nothing below, traverse parents backward
+        # (up the tree) until I find one that has a lower sibling;
+        # check the lower sibling if it has a node as many levels deep
+        # as I traversed up; switch to it. If it doesn't, keep going
+        # back/down until I find one.
+
+        # A - B - C <-- hits downarrow when C is selected
+        # | 
+        # D - E
+        # |
+        # F - G - H <-- should end up here.
+        
+        if self.editing: return
+        if not self.uiparent(): return
+        sibs = self.uiparent().uichildren()
+        index = sibs.index(self)+1
+        if len(sibs) <= index:
+            #index = 0
+            return
+
+        sibs[index].focus()
+
+    key_ctrl_n = key_Down
+
+    def key_Up(self):
+        # XXX - Same XXX as key_Down, except reversed.
+        if self.editing: return
+        if not self.uiparent(): return
+
+        sibs = self.uiparent().uichildren()
+        i = sibs.index(self)-1
+        if i == -1:
+            return
+        sibs[i].focus()
+
+    key_ctrl_p = key_Up
+
+
 
 class BaseNodeXML(facets.Facet, xmlobject.XMLObject):
     # Relying on order of bases here to say that __init__ comes from
@@ -195,42 +390,6 @@ class BaseNodeXML(facets.Facet, xmlobject.XMLObject):
 
     def getChildren(self):
         return [xmlobject.IXMLObject(x) for x in INode(self).children]
-
-
-WHITE = gtk.gdk.color_parse('#FFFFFF')
-LBLUE = gtk.gdk.color_parse('#AAAAFF')
-BLUE = gtk.gdk.color_parse('#0000FF')
-GREEN = gtk.gdk.color_parse('#00FF00')
-DGREEN = gtk.gdk.color_parse('#00AA00')
-BLACK = gtk.gdk.color_parse('#000000')
-
-cuts = []
-
-keymap = {}
-for name in dir(keysyms):
-    try:
-        keymap[getattr(keysyms, name)] = name
-    except TypeError:
-        pass
-
-class FancyKeyMixin:
-    def _cbGotKey(self, thing, event):
-
-        mods = []
-        if event.state & gtk.gdk.CONTROL_MASK:
-            mods.append('ctrl')
-        if event.state & gtk.gdk.SHIFT_MASK:
-            mods.append('shift')
-        mod = '_'.join(mods)
-        keyname = keymap[event.keyval]
-        if mod:
-            name = 'key_%s_%s' % (mod, keyname)
-        else:
-            name = 'key_%s' % keyname
-        print event.keyval, repr(event.string), event.state, repr(keymap[event.keyval]), name
-        m = getattr(self, name, None)
-        if m:
-            return m()
 
 
 def presentChoiceMenu(question, choices):
