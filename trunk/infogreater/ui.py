@@ -523,7 +523,6 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         i = self.parent.node.children.index(self.node)
         del self.parent.node.children[i]
         del self.parent.childBoxes[i]
-        # XXX - crap, cutting nodes-with-children is broken
         self.destroy_widgets()
         self.controller.redisplay()
         self.parent.focus()
@@ -545,47 +544,23 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.focus()
 
 
-    def key_Right(self):
-        if self.editing: return
-        if not self.expanded:
-            self.toggleShowChildren()
-        if self.childBoxes:
-            self.childBoxes[len(self.childBoxes)//2].focus()
-        return STOP_EVENT
+    def _shift(self, modder):
+        # XXX encapsulation
+        i = self.parent.node.children.index(self.node)
+        node = self.parent.node.children.pop(i)
+        box = self.parent.childBoxes.pop(i)
+        self.parent.node.children.insert(i+modder, node)
+        self.parent.childBoxes.insert(i+modder, box)
+        self.controller.redisplay()
+        self.focus()
 
+    def key_shift_Up(self):
+        return self._shift(-1)
 
-    def key_Left(self):
-        if self.editing: return
-        if self.parent:
-            self.parent.focus()
-        return STOP_EVENT
-
-    def key_Down(self):
-
-        # XXX - if there's nothing below, traverse parents backward
-        # (up the tree) until I find one that has a lower sibling;
-        # check the lower sibling if it has a node as many levels deep
-        # as I traversed up; switch to it. If it doesn't, keep going
-        # back/down until I find one.
-
-        # A - B - C <-- hits downarrow when C is selected
-        # | 
-        # D - E
-        # |
-        # F - G - H <-- should end up here.
+    def key_shift_Down(self):
+        return self._shift(+1)
         
-        if self.editing: return
-        if self.parent:
-            index = self.parent.childBoxes.index(self)+1
-            if len(self.parent.childBoxes) <= index:
-                index = 0
-            self.parent.childBoxes[index].focus()
 
-    def key_Up(self):
-        # XXX - Same XXX as key_Down, except reversed.
-        if self.editing: return
-        if self.parent:
-            self.parent.childBoxes[self.parent.childBoxes.index(self)+-1].focus()
 
 
     def key_Return(self):
@@ -606,6 +581,64 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.buffer.set_text(self.oldText)
         del self.oldText
         #reactor.callLater(0, self.focus)
+
+
+
+    ## Navigation ##
+
+    def key_Right(self):
+        if self.editing: return
+        if not self.expanded:
+            self.toggleShowChildren()
+        if self.childBoxes:
+            self.childBoxes[len(self.childBoxes)//2].focus()
+        return STOP_EVENT
+
+    key_ctrl_f = key_Right
+
+
+    def key_Left(self):
+        if self.editing: return
+        if self.parent:
+            self.parent.focus()
+        return STOP_EVENT
+
+    key_ctrl_b = key_Left
+
+    def key_Down(self):
+
+        # XXX - if there's nothing below, traverse parents backward
+        # (up the tree) until I find one that has a lower sibling;
+        # check the lower sibling if it has a node as many levels deep
+        # as I traversed up; switch to it. If it doesn't, keep going
+        # back/down until I find one.
+
+        # A - B - C <-- hits downarrow when C is selected
+        # | 
+        # D - E
+        # |
+        # F - G - H <-- should end up here.
+        
+        if self.editing: return
+        if self.parent:
+            index = self.parent.childBoxes.index(self)+1
+            if len(self.parent.childBoxes) <= index:
+                #index = 0
+                return
+            
+            self.parent.childBoxes[index].focus()
+
+    key_ctrl_n = key_Down
+
+    def key_Up(self):
+        # XXX - Same XXX as key_Down, except reversed.
+        if self.editing: return
+        i = self.parent.childBoxes.index(self)-1
+        if i == -1: return
+        if self.parent:
+            self.parent.childBoxes[i].focus()
+
+    key_ctrl_p = key_Up
 
 
 
