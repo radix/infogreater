@@ -9,14 +9,17 @@ from infogreater import marmalade
 reference = marmalade.reference
 
 class IXMLObject(interface.Interface):
-    def setXMLState(klass, attrs, children):
+    def setXMLState(self, attrs, children, parent):
         """
-        Return something. YEAH ANYTHING. Although you'll probably want
-        to make that anything something that can be marmaladed again.
+        @param attrs: A dict of strings to strings from the XML
+               attributes.
 
-        Note that the context will have an IXMLParent that is the
-        object representing the XML element immediately above this
-        one. However, that object WILL NOT have had its state yet.
+        @param children: A list of the objects that were represented
+               by the children of the XML element.
+
+        @param parent: The object that was represented by the XML
+               element immediately above this one. Note that the parent
+               WILL NOT have had its state set yet.
         """
 
 
@@ -79,13 +82,14 @@ class XMLObject(marmalade.DOMJellyable, object):
                 xo = IXMLObject(child, child)
                 element.childNodes.append(jellier.jellyToNode(xo))
 
-    def setXMLState(self, attrs, children):
+    def setXMLState(self, attrs, children, parent):
         l = []
         reflect.accumulateClassList(self.__class__, 'contextRemembers', l)
         for contextName, attributeName in l:
             setattr(self, attributeName, ctx.get(contextName))
         self.attrs = attrs
         self.children = children
+        self.parent = parent
 
     def getXMLState(self):
         """
@@ -118,7 +122,7 @@ def unmarmaladeXO(unjellier, element):
             ctx.call({IXMLParent: inst},
                      unjellier.unjellyInto, children, i, childNode)
             i += 1
-    inst.setXMLState(element.attributes, children)
+    inst.setXMLState(element.attributes, children, ctx.get(IXMLParent))
     return inst
 
 

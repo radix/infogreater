@@ -51,9 +51,9 @@ class SimpleNodeXML(facets.Facet, xmlobject.XMLObject):
         return [xmlobject.IXMLObject(x) for x in INode(self).children]
 
 
-    def setXMLState(self, attrs, children):
+    def setXMLState(self, attrs, children, parent):
         node = INode(self)
-        node.parent = INode(ctx.get(xmlobject.IXMLParent), None)
+        node.parent = INode(parent, None)
         node.content = attrs['content']
         node.children = [INode(x) for x in children or []]
 
