@@ -291,7 +291,6 @@ class BaseNodeUI(util.Forgetter):
 
     def __setstate__(self, d):
         util.Forgetter.__setstate__(self, d)
-        print "my controller is", self.controller
         self._makeWidget()
 
 

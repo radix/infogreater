@@ -1,4 +1,4 @@
-from infogreater import node
+from infogreater import node, ui
 from twisted.web import microdom
 
 def freemindToNodes(filename):
@@ -10,7 +10,13 @@ def freemindToNodes(filename):
 def fmn2ign(fmnode):
     text = fmnode.getAttribute('TEXT')
     print "Text is", text
-    n = node.SimpleNode(text,
-                        [fmn2ign(x) for x in fmnode.childNodes if x.tagName == 'node'])
+
+    n = ui.INodeUI(node.SimpleNode(text))
+    children = [fmn2ign(x) for x in fmnode.childNodes if x.tagName == 'node']
+    for child in children:
+        childbox = ui.INodeUI(child)
+        n.childBoxes.append(childbox)
+        childbox.parent = n
+    n.node.children = children
     return n
         
