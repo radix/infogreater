@@ -11,12 +11,15 @@ try:
     import _winreg
     gtk_key = _winreg.OpenKeyEx(_winreg.HKEY_LOCAL_MACHINE,
                                 r'SOFTWARE\GTK\2.0')
-    gtk_dir = _winreg.QueryValueEx(gtk_key, 'Path')
+    gtk_dir = _winreg.QueryValueEx(gtk_key, 'Path')[0] # this is unicode
     _d = dict(PATH=os.environ['PATH'], 
               gtkbin=r'%s\bin' % (gtk_dir,),
               gtklib=r'%s\lib' % (gtk_dir,),
               SEP=os.pathsep)
-    os.environ['PATH'] = "%(PATH)s%(SEP)s%(gtkbin)s%(SEP)s%(gtklib)s" % _d
+    # our GTK must go *first*.  we found cases of "DLL shadowing" - 
+    # e.g. intl.dll from subversion was being found and was incompatible
+    os.environ['PATH'] = ("%(gtkbin)s%(SEP)s%(gtklib)s%(SEP)s%(PATH)s" % _d
+                          ).encode('utf-8')
     sys.path.append(os.path.join(os.path.dirname(sys.executable), 'gtk-2.0'))
 except ImportError:
     pass
