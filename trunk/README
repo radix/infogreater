@@ -1,0 +1,14 @@
+Ctrl-e: edit current node
+Escape: Cancel editing (also click elsewhere, etc)
+Enter: Commit editing
+
+Ctrl-x: cut current node
+Ctrl-v: paste under current node
+
+Right-arrow: Expand if unexpanded, move focus to child
+Left-arrow: Move focus to parent
+Up-arrow: Move focus to previous sibling
+Down-arrow: Move focus to next sibling
+
+Insert: Create a new child
+Enter: Create a new sibling beneath the current one
