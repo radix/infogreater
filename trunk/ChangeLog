@@ -1,3 +1,9 @@
+2004-07-15  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* Installation: Add distutils support thanks to Sourav K. Mandal.
+	* UI: When creating a new map, put some useful information for
+	newbies in the root node.
+
 2004-07-14  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* UI: Use nicer names in the insert special node window.
