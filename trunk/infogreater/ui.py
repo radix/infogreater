@@ -464,7 +464,6 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         # to scroll to the widget when that happens.
 
         # Also we need to refocus when the size changes from editing etc.
-        print "size"
         if (self.widget.is_focus() and not self.focused) or self.editing:
             print "_cbSized to tha fizocus"
             self._cbFocus(None,None)
@@ -476,6 +475,9 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             # UGGh. We're using thing=None here as a heuristic that
             # this is a manually-called _cbFocus instead of the actual
             # event.
+
+            # The point is that this call triggers a size-event, so
+            # _cbSized gets called, which calls this. UGH.
             self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
 
         # scroll the canvas to show the node
