@@ -74,6 +74,7 @@ class GreatUI(gtk2util.GladeKeeper):
     def drawLines(self, parent=None):
         if parent is None:
             parent = self.root
+        if not parent.expanded: return
         for box in parent.childBoxes:
             # XXX encapsulation
             pwidth, pheight = parent.widget.size_request()

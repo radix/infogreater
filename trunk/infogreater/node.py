@@ -157,7 +157,8 @@ class SimpleNode(BaseNode):
     def __init__(self, content='', children=None):
         self.content = content
         if children is None:
-            self.children = []
+            children = []
+        self.children = children
 
 
     def getContent(self):
