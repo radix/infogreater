@@ -1,7 +1,7 @@
 import os
 
 from infogreater import facets, xmlobject
-from infogreater.nodes import simple, base
+from infogreater.nodes import base
 from infogreater.nodes.base import INode, INodeUI
 
 class FileSystemNode(facets.Facet):
@@ -20,11 +20,11 @@ class FileSystemNode(facets.Facet):
 
 # XXX I really ought to be subclassing a "DynamicCachingUI" or
 # something
-class FileSystemUI(simple.SimpleNodeUI):
+class FileSystemUI(base.BaseNodeUI):
     expanded = False
     def __init__(self, *a, **kw):
         self._cacheChildren = []
-        simple.SimpleNodeUI.__init__(self, *a, **kw)
+        base.BaseNodeUI.__init__(self, *a, **kw)
 
     def hasChildren(self):
         return os.path.isdir(INode(self).path)
@@ -39,10 +39,10 @@ class FileSystemUI(simple.SimpleNodeUI):
     def showChildren(self):
         children = INode(self).getChildren()
         self._cacheChildren = [INodeUI(x) for x in children]
-        simple.SimpleNodeUI.showChildren(self)
+        base.BaseNodeUI.showChildren(self)
 
     def hideChildren(self):
-        simple.SimpleNodeUI.hideChildren(self)
+        base.BaseNodeUI.hideChildren(self)
         for x in self._cacheChildren:
             x.destroyChildren()
         self._cacheChildren = []
