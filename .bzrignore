@@ -1,0 +1,12 @@
+trunk/*.bak
+trunk/*.ig
+trunk/*.mm
+trunk/*.pyc
+trunk/bin/*.bak
+trunk/bin/*.ig
+trunk/bin/*.mm
+trunk/bin/*.pyc
+trunk/infogreater/*.bak
+trunk/infogreater/*.ig
+trunk/infogreater/*.mm
+trunk/infogreater/*.pyc
