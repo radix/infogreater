@@ -27,7 +27,7 @@ class XML(glade.XML):
 
 
 # XXX - pasting is fubared
-# XXX - Scroll the canvas to the currently-focused node, always.
+# XXX - When adding new siblings, auto-scrolling is broken.
 # FFF - adapt each interface in a node to an IGUI thing
 # FFF - Other node types! UI for creating them?
 # FFF - separate view for cut-buffer
@@ -49,6 +49,7 @@ class GreatUI(gtk2util.GladeKeeper):
 
         self.window = self.w['MainWindow']
         self.canvas = self.w['Canvas']
+        self.cscroll = self.w['CanvasScroll']
         self.w['NodeFrame'].destroy()
 
         self.window.connect('destroy', gtk.mainquit)
@@ -74,6 +75,9 @@ class GreatUI(gtk2util.GladeKeeper):
         # that. So I think the only solution is to give in and just
         # make the layout algorithm incremental, and respond to
         # TextView's size-changing event.
+
+        # XXX This is a huge bug it must be fixed!
+        
         reactor.callLater(0.1, lambda: (self.redisplay(), self.root.widget.grab_focus()))
         # End hack
         
@@ -230,6 +234,12 @@ class INodeUI(components.Interface):
     def hide(self):
         """
         Hide this node and all children.
+        """
+
+
+    def focus(self):
+        """
+        'Select' this node.
         """
 
 
@@ -402,6 +412,9 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.show()
         print self.widget.size_request()
 
+    def focus(self):
+        self.widget.grab_focus()
+
     def resize_border(self, width):
         for thingy in (gtk.TEXT_WINDOW_LEFT, gtk.TEXT_WINDOW_RIGHT,
                        gtk.TEXT_WINDOW_TOP, gtk.TEXT_WINDOW_BOTTOM):
@@ -409,7 +422,12 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
 
     def _cbFocus(self, thing, direction):
+        print "FOCUSED", self
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+        adj = self.controller.cscroll.get_vadjustment()
+        alloc = self.widget.get_allocation()        
+        if alloc.y < adj.value or alloc.y > adj.value + adj.page_size:
+            adj.set_value(min(alloc.y, adj.upper-adj.page_size))
 
 
     def _cbLostFocus(self, thing, thing2):
@@ -423,7 +441,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
         self.editing = False
         self.controller.redisplay()
-        self.widget.grab_focus()
+        self.focus()
 
 
     def addChild(self, newnode=None, after=None):
@@ -440,7 +458,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             self.childBoxes.append(newbox)
             index = -1
         self.controller.redisplay()
-        self.childBoxes[index].widget.grab_focus()
+        self.childBoxes[index].focus()
 
 
     ##################
@@ -478,7 +496,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         # XXX - crap, cutting nodes-with-children is broken
         self.destroy_widgets()
         self.controller.redisplay()
-        self.parent.widget.grab_focus()
+        self.parent.focus()
         cuts.append(self.node)
         # XXX - there will be other places that destroy nodes soon; refactor 
         if not self.parent.childBoxes:
@@ -494,7 +512,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     def key_space(self):
         if self.editing: return
         self.toggleShowChildren()
-        self.widget.grab_focus()
+        self.focus()
 
 
     def key_Right(self):
@@ -502,14 +520,14 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         if not self.expanded:
             self.toggleShowChildren()
         if self.childBoxes:
-            self.childBoxes[len(self.childBoxes)//2].widget.grab_focus()
+            self.childBoxes[len(self.childBoxes)//2].focus()
         return STOP_EVENT
 
 
     def key_Left(self):
         if self.editing: return
         if self.parent:
-            self.parent.widget.grab_focus()
+            self.parent.focus()
         return STOP_EVENT
 
     def key_Down(self):
@@ -518,12 +536,12 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             index = self.parent.childBoxes.index(self)+1
             if len(self.parent.childBoxes) <= index:
                 index = 0
-            self.parent.childBoxes[index].widget.grab_focus()
+            self.parent.childBoxes[index].focus()
 
     def key_Up(self):
         if self.editing: return
         if self.parent:
-            self.parent.childBoxes[self.parent.childBoxes.index(self)+-1].widget.grab_focus()
+            self.parent.childBoxes[self.parent.childBoxes.index(self)+-1].focus()
 
 
     def key_Return(self):
@@ -543,7 +561,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.immute()
         self.buffer.set_text(self.oldText)
         del self.oldText
-        #reactor.callLater(0, self.widget.grab_focus)
+        #reactor.callLater(0, self.focus)
 
 
 
