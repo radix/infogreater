@@ -3,9 +3,7 @@ from __future__ import division
 from twisted.python import util, components
 from twisted.spread.ui import gtk2util
 
-from nevow import formless
-from infogreater import gtk2form
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 
 from infogreater import node
 
@@ -76,14 +74,14 @@ class GreatUI(gtk2util.GladeKeeper):
             self.basenode = node.SimpleNode()
         self.root = INodeUI.fromNode(self.basenode, self, self._Canvas)
         self.redisplay()
-
+        self.root.widget.grab_focus()
+        
 
     def redisplay(self):
         if not hasattr(self, 'root'):
-            from twisted.internet import reactor
             reactor.callLater(0, self.redisplay)
             return
-        totalHeight = self.root.getTotalHeight()
+        totalHeight = self.root.calculateHeight()
         Y = totalHeight // 2
         self.root.redisplay(10, Y)
 
@@ -153,9 +151,10 @@ class GreatUI(gtk2util.GladeKeeper):
 
 class INodeUI(components.Interface):
     """
-    XXX ugh, figure out what to do with .height, .expanded, and .childBoxes
+    The user interface for interacting with a particular kind of node
+    (usually a node.INode implementor, but it doesn't really matter).
     """
-
+    # Not interface.
     def fromNode(node, controller, canvas):
         nui = INodeUI(node)
         nui.controller = controller
@@ -163,14 +162,35 @@ class INodeUI(components.Interface):
         return nui
     fromNode = staticmethod(fromNode)
 
+    # Interface.
 
-    def getTotalHeight(self):
+    expanded = property(doc="Whether or not this node's children are visible.")
+
+    height = property(doc="""The current cached total height of the node.
+    XXX This should be unnecessary.""")
+
+    childBoxes = property(doc="""The children (list of INodeUIs) of this node.
+    XXX This *really* should be unnecessary, it's only used for its
+    truth value when doing some display calculations. It could
+    probably be replaced with hasChildren(). Hell... Shouldn't the
+    'expand' attribute be fully sufficient?""")
+    
+
+    def calculateHeight(self):
         """
         Return the total height required by this node and all of its
-        children...
+        children, and set the 'height' attribute of this node to it.
 
-        XXX: I can't tell what should happen when the node is
-        invisible...
+        I'm pretty sure there are good reasons to explicitly separate
+        calculation of the height and access of the cached value. I
+        don't think it's reasonably possible to make accessing the
+        value transparently recompute it when necessary, because I'm
+        not sure when it's necessary. Bleh. Or maybe not, it's
+        probably possible after all, but I'm not gonna worry about it
+        now!
+
+        I'm pretty sure that when the widget is invisible, it should
+        just return 0.
         """
 
 
@@ -197,6 +217,8 @@ class BaseNodeUI:
     __implements__ = (INodeUI,)
 
     visible = True
+    expanded = True
+
 
     V_PAD = 20
     H_PAD = 20
@@ -205,7 +227,6 @@ class BaseNodeUI:
 
     def __init__(self, node):
         self.node = node
-
         self.childBoxes = []
 
     def _internalMakeWidget(self):
@@ -215,13 +236,14 @@ class BaseNodeUI:
                 )
         self._makeWidget()
 
-    def getTotalHeight(self):
+
+    def calculateHeight(self):
         if not self.widget:
             self._internalMakeWidget()
 
         height = 0
         for x in self.childBoxes:
-            height += x.getTotalHeight() + self.V_PAD
+            height += x.calculateHeight() + self.V_PAD
 
         # Sometimes a node's height will be larger than all of its
         # children's.
@@ -231,60 +253,12 @@ class BaseNodeUI:
         self.height = height
         return height
 
-    def show(self):
-        self.widget.show()
-
-    def hide(self):
-        self.widget.hide()
-        for child in self.childBoxes:
-            child.hide()
-
-
-class DataNodeUI(BaseNodeUI):
-
-    expanded = False
-
-    def _makeWidget(self):
-        self.w = XML(GLADE_FILE, 'NodeFrame')
-        self.widget = self.w['NodeFrame']
-
-        if not self.childBoxes:
-            self.w['ShowChildrenTog'].hide()
-
-        self.w['NewChildButton'].connect('clicked', self.on_NewChild_clicked)
-        self.w['AddButton'].connect('clicked', self.on_AddRow_clicked)
-        self.w['ShowChildrenTog'].connect('toggled', self.on_ExpandChildren_toggled)
-
-        self.updateTitle(self.node.getProperty('name', 'Unnamed'))
-
-        #self.w['PropBox'].pack_start(gtk2form.menu(node, self.controller.redisplay))
-
-        # put it at arbitrary location and hide it: let someone reposition it soon.
-        self.canvas.put(self.widget, 0, 0)
-        self.widget.hide()
-
-        proptog = self.w['ShowPropsTog']
-        proptog.set_active(True)
-        proptog.connect('toggled', self.on_ExpandButton_toggled)
-        proptog.set_active(False)
-
-        self._updateProperties()
-
-
-    def _updateProperties(self):
-        for x in self.w['PropRows'].get_children():
-            x.destroy()
-        for k,v in self.node.getProperties():
-            self.addProp(k,v)
-
 
     def redisplay(self, X, Y):
         if not self.widget:
-            self._makeWidget()
+            self._internalMakeWidget()
         # XXX This is *full* of random tweaks! Heh! (and it needs more)
         assert Y >= 0, (X, Y)
-
-        self._updateProperties() # XXX?
 
         self.widget.hide()
         self.canvas.move(self.widget, X, Y)
@@ -310,11 +284,9 @@ class DataNodeUI(BaseNodeUI):
             prevHeight = child.height
 
 
-    def updateTitle(self, name):
-        self.w['Header'].set_text("%s: %s" % (self.node.__class__.__name__, name))
-
-
-    def on_ExpandChildren_toggled(self, btn):
+    def toggleShowChildren(self):
+        if not self.childBoxes:
+            return
         self.expanded = not self.expanded
         if self.expanded:
             self.show()
@@ -323,109 +295,93 @@ class DataNodeUI(BaseNodeUI):
         self.controller.redisplay()
 
 
-    def on_ExpandButton_toggled(self, btn):
-        # XXX - if we're a smallnode, convert to framenode.
-        if self.visible:
-            self.w['PropBox'].hide()
-        else:
-            self.w['PropBox'].show()
-        self.visible = not self.visible
-        self.widget.set_size_request(-1, -1)
-        self.controller.redisplay()
+    def show(self):
+        self.widget.show()
+
+    def hide(self):
+        self.widget.hide()
+        for child in self.childBoxes:
+            child.hide()
 
 
-    def on_NewChild_clicked(self, btn):
-        newnode = node.DataNode([])
-        self.node.putChild(newnode)
-        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas)
-        self.childBoxes.append(newbox)
-
-        childtog = self.w['ShowChildrenTog']
-        childtog.show()
-        childtog.set_active(True)
-        self.controller.redisplay()
-
-
-    def on_AddRow_clicked(self, btn):
-        # XXX Add should be made into a configurable that the node supports
-        def _cb(*args):
-            k = text.get_text()
-            self.addProp(k, 'new')
-            self.node.setProperty(k, 'new')
-            dialog.destroy()
-            self.controller.redisplay()
-        def _eb(*args):
-            dialog.destroy()
-
-        xml = XML(GLADE_FILE, 'AddRowDialog')
-        dialog = xml['AddRowDialog']
-        text = xml['AddRowEntry']
-        text.connect('activate', _cb)
-        xml['OkAdd'].connect('clicked', _cb)
-        xml['CancelAdd'].connect('clicked', _eb)
-
-
-    def _cb_save(self, thingy, keye, vale):
-        k = keye.get_text()
-        v = vale.get_text()
-        self.node.setProperty(k, v)
-        if k == 'name':
-            self.updateTitle(v)
-
-
-    def _cb_del(self, butt, kl, hb):
-        self.node.delProperty(kl.get_text())
-        hb.destroy()
-
-
-    def addProp(self, k, v):
-        hb = gtk.HBox()
-        kl = gtk.Label()
-        kl.set_text(k)
-        ve = gtk.Entry()
-        ve.set_text(str(v))
-
-        delbutt = gtk.Button('x')
-        delbutt.connect('clicked', self._cb_del, kl, hb)
-
-        ve.connect('activate', self._cb_save, kl, ve)
-
-        hb.pack_start(kl, True, True, 0)
-        hb.pack_start(ve, False, False, 0)
-        hb.pack_start(delbutt, False, False, 0)
-
-        proprows = self.w['PropRows']
-        proprows.pack_start(hb, False, False, 0)
-        proprows.show_all()
-
-        self.widget.set_size_request(-1, -1)
-
-components.registerAdapter(DataNodeUI, node.DataNode, INodeUI)
-
-
-
+WHITE = gtk.gdk.color_parse('#FFFFFF')
+LBLUE = gtk.gdk.color_parse('#AAAAFF')
+BLACK = gtk.gdk.color_parse('#000000')
 
 class SimpleNodeUI(BaseNodeUI):
+    editing = False
+
+    # XXX - arrow navigation is working remarkably well for having no
+    # implementation in my code at all, but it's not perfect. If I hit
+    # left-arrow when there isn't a node directly adjacent, it'll just
+    # unselect all.
+
     def _makeWidget(self):
         self.widget = gtk.Entry()
+        self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
         self.widget.set_text(self.node.getContent())
+        self.widget.set_editable(False)
         self.widget.connect('key-press-event', self._cbGotKey)
-        self.widget.connect('changed', self._cbCommit)
-        # Let someone else display and reposition this widget soon.
-        self.canvas.put(self.widget, 0, 0)
+        #XXX ARGH this doesn't happen on mouse-click DAMNIT
+        #self.widget.connect('focus', self._cbFocus)
+        self.widget.connect('focus-in-event', self._cbFocus)
+        self.widget.connect('focus-out-event', self._cbLostFocus)
+        self.canvas.put(self.widget, 0,0)
         self.widget.hide()
 
-        # XXX - GET RID of expanded. It doesn't make sense for SimpleNodes.
-        self.expanded = False
 
-    def _cbCommit(self, thing):
+    def _cbFocus(self, thing, direction):
+        print direction
+        self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+
+    def _cbLostFocus(self, thing, thing2):
+        self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
+        if self.editing:
+            self.cancelEdit()
+
+    def commit(self):
         self.node.setContent(self.widget.get_text())
 
+
     def _cbGotKey(self, thing, event):
+        print event.keyval
         if event.keyval == keysyms.Insert:
             self.widget.stop_emission('key-press-event')
             self.addChild()
-            
+        elif not self.editing:
+            self.widget.stop_emission('key-press-event')
+            if event.keyval == keysyms.e:
+                self.edit()
+            elif event.keyval == keysyms.space:
+                self.toggleShowChildren()
+                self.widget.grab_focus()
+        elif self.editing:
+            if event.keyval == keysyms.Escape:
+                self.cancelEdit()
+            elif event.keyval == keysyms.Return:
+                self.commit()
+
+
+    def edit(self):
+        self.oldText = self.widget.get_text()
+        self.widget.set_editable(True)
+        self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
+        self.widget.modify_bg(gtk.STATE_NORMAL, LBLUE)
+        #reactor.callLater(0, self.widget.grab_focus)
+        self.editing = True
+
+
+    def cancelEdit(self):
+        print "cancelling edit!"
+        self.widget.set_editable(False)
+        self.widget.set_text(self.oldText)
+        self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
+        self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+        self.widget.grab_focus()
+        del self.oldText
+        #reactor.callLater(0, self.widget.grab_focus)
+        self.editing = False
+
 
     def addChild(self):
         newnode = node.SimpleNode()
@@ -435,38 +391,143 @@ class SimpleNodeUI(BaseNodeUI):
         self.controller.redisplay()
 
 
-    def redisplay(self, X, Y):
-        # XXX totally rape'n'pasted from the other redisplay. MUST refactor.
-        
-        if not self.widget:
-            self._makeWidget()
-        # XXX This is *full* of random tweaks! Heh! (and it needs more)
-        assert Y >= 0, (X, Y)
-
-        self.widget.hide()
-        self.canvas.move(self.widget, X, Y)
-        self.widget.show()
-
-        if not self.childBoxes:
-            return
-
-        newX = X + self.widget.size_request()[0] + self.H_PAD
-        newY = Y - (self.height // 2)
-        first = self.childBoxes[0]
-        newY = newY + (first.height // 2)
-        first.redisplay(newX, newY)
-        prevHeight = first.height
-
-        for child in self.childBoxes[1:]:
-            if child.expanded and child.childBoxes:
-                newY += (prevHeight // 2) + (child.height // 2)
-            else:
-                newY += prevHeight
-            newY += self.V_PAD
-            child.redisplay(newX, newY)
-            prevHeight = child.height
-
 
 components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
 
 
+
+
+##class DataNodeUI(BaseNodeUI):
+
+##    expanded = False
+
+##    def _makeWidget(self):
+##        self.w = XML(GLADE_FILE, 'NodeFrame')
+##        self.widget = self.w['NodeFrame']
+
+##        if not self.childBoxes:
+##            self.w['ShowChildrenTog'].hide()
+
+##        self.w['NewChildButton'].connect('clicked', self.on_NewChild_clicked)
+##        self.w['AddButton'].connect('clicked', self.on_AddRow_clicked)
+##        self.w['ShowChildrenTog'].connect('toggled', self.on_ExpandChildren_toggled)
+
+##        self.updateTitle(self.node.getProperty('name', 'Unnamed'))
+
+##        #self.w['PropBox'].pack_start(gtk2form.menu(node, self.controller.redisplay))
+
+##        # put it at arbitrary location and hide it: let someone reposition it soon.
+##        self.canvas.put(self.widget, 0, 0)
+##        self.widget.hide()
+
+##        proptog = self.w['ShowPropsTog']
+##        proptog.set_active(True)
+##        proptog.connect('toggled', self.on_ExpandButton_toggled)
+##        proptog.set_active(False)
+
+##        self._updateProperties()
+
+
+##    def _updateProperties(self):
+##        for x in self.w['PropRows'].get_children():
+##            x.destroy()
+##        for k,v in self.node.getProperties():
+##            self.addProp(k,v)
+
+
+##    def redisplay(self, X, Y):
+##        self._updateProperties() # XXX?
+
+
+
+##    def updateTitle(self, name):
+##        self.w['Header'].set_text("%s: %s" % (self.node.__class__.__name__, name))
+
+
+##    def on_ExpandChildren_toggled(self, btn):
+##        self.expanded = not self.expanded
+##        if self.expanded:
+##            self.show()
+##        else:
+##            self.hide()
+##        self.controller.redisplay()
+
+
+##    def on_ExpandButton_toggled(self, btn):
+##        # XXX - if we're a smallnode, convert to framenode.
+##        if self.visible:
+##            self.w['PropBox'].hide()
+##        else:
+##            self.w['PropBox'].show()
+##        self.visible = not self.visible
+##        self.widget.set_size_request(-1, -1)
+##        self.controller.redisplay()
+
+
+##    def on_NewChild_clicked(self, btn):
+##        newnode = node.DataNode([])
+##        self.node.putChild(newnode)
+##        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas)
+##        self.childBoxes.append(newbox)
+
+##        childtog = self.w['ShowChildrenTog']
+##        childtog.show()
+##        childtog.set_active(True)
+##        self.controller.redisplay()
+
+
+##    def on_AddRow_clicked(self, btn):
+##        # XXX Add should be made into a configurable that the node supports
+##        def _cb(*args):
+##            k = text.get_text()
+##            self.addProp(k, 'new')
+##            self.node.setProperty(k, 'new')
+##            dialog.destroy()
+##            self.controller.redisplay()
+##        def _eb(*args):
+##            dialog.destroy()
+
+##        xml = XML(GLADE_FILE, 'AddRowDialog')
+##        dialog = xml['AddRowDialog']
+##        text = xml['AddRowEntry']
+##        text.connect('activate', _cb)
+##        xml['OkAdd'].connect('clicked', _cb)
+##        xml['CancelAdd'].connect('clicked', _eb)
+
+
+##    def _cb_save(self, thingy, keye, vale):
+##        k = keye.get_text()
+##        v = vale.get_text()
+##        self.node.setProperty(k, v)
+##        if k == 'name':
+##            self.updateTitle(v)
+
+
+##    def _cb_del(self, butt, kl, hb):
+##        self.node.delProperty(kl.get_text())
+##        hb.destroy()
+
+
+##    def addProp(self, k, v):
+##        hb = gtk.HBox()
+##        kl = gtk.Label()
+##        kl.set_text(k)
+##        ve = gtk.Entry()
+##        ve.set_text(str(v))
+
+##        delbutt = gtk.Button('x')
+##        delbutt.connect('clicked', self._cb_del, kl, hb)
+
+##        ve.connect('activate', self._cb_save, kl, ve)
+
+##        hb.pack_start(kl, True, True, 0)
+##        hb.pack_start(ve, False, False, 0)
+##        hb.pack_start(delbutt, False, False, 0)
+
+##        proprows = self.w['PropRows']
+##        proprows.pack_start(hb, False, False, 0)
+##        proprows.show_all()
+
+##        self.widget.set_size_request(-1, -1)
+
+##components.registerAdapter(DataNodeUI, node.DataNode, INodeUI)
