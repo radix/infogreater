@@ -3,22 +3,24 @@
 from twisted.python import reflect, context as ctx
 from infogreater import marmalade
 
-class XMLObject(marmalade.DOMJellyable):
+class XMLObject(marmalade.DOMJellyable, object):
     """
     A XML persistence mechanism that enforces some knowledge of
     persistence.
 
     No, it doesn't support __slots__. I hate you.
 
-    Conceptually, this is different from the 'XMLObject' project in
-    that it's more simple and dynamic, so it's marginally closer to
-    Pickle; however, it retains most of the strict requirement of
-    knowledge of how the object is to be persisted; you must put
-    objects to be persisted in the 'children' attribute, and you can
-    put a mapping of attributes in the 'attributes' object. That is,
-    you cannot just persist arbitrary objects with this, therefore,
-    there is less room to screw up.
+    This is different from the 'XMLObject' project
+    (http://xmlobject.base-art.net/) in that it's more simple and
+    dynamic, so it's marginally closer to Pickle. However, it retains
+    most of the strict requirement of knowledge of how the object is
+    to be persisted; you must put objects to be persisted in the
+    'children' attribute, and you can put a mapping of attributes in
+    the 'attributes' object. That is, you cannot just persist
+    arbitrary objects with this, therefore, there is less room to
+    screw up.
     """
+    
     def __init__(self, attrs=None, children=None):
         """
         'attrs': (optional) A mapping of strings to strings
@@ -50,12 +52,12 @@ class XMLObject(marmalade.DOMJellyable):
     def toXML(self):
         return marmalade.jellyToXML(self)
 
-    def fromXML(klass, xml):
-        return ctx.call({'unmarmalader': unmarmalader},
-                        marmalade.unjellyFromXML, xml)
-    fromXML = classmethod(fromXML)
+def fromXML(xml):
+    return ctx.call({'unmarmalader': unmarmalader},
+                    marmalade.unjellyFromXML, xml)
 
 def unmarmalader(unjellier, element):
+    # XXX needs secured
     children = None
     if element.childNodes:
         children = [None]*len(element.childNodes)

@@ -1,5 +1,5 @@
 from twisted.trial import unittest
-from infogreater.xmlobject import XMLObject
+from infogreater.xmlobject import XMLObject, fromXML
 
 class SomeSubclass(XMLObject):
     pass
@@ -17,7 +17,7 @@ class ThingyTest(unittest.TestCase):
 
         origx = origo.toXML()
         
-        newo = XMLObject.fromXML(origx)
+        newo = fromXML(origx)
 
         self.assertEquals(newo.attrs, origo.attrs)
         self.assertEquals(len(newo.children), len(origo.children))

@@ -28,7 +28,7 @@ identical.
 
 """
 
-import new
+import new, compiler
 
 from twisted.python.reflect import namedModule, namedClass, namedObject, fullFuncName, qual
 from twisted.persisted.crefutil import NotKnown, _Tuple, _InstanceMethod, _DictKeyAndValue, _Dereference, _Defer
@@ -135,14 +135,16 @@ class DOMUnjellier:
         self.unjellyInto(instance.__dict__, attrName, valueNode)
 
     def unjellyNode(self, node):
+        # XXX bleh stupid hacky blacklist, parameterize it
+        if node.tagName in ['module', 'class', 'instance',
+                            'function', 'method', 'copyreg']:
+            raise TypeError("Unsupported type: %s" % (node.tagName,))
+
         if node.tagName.lower() == "none":
             retval = None
         elif node.tagName == "string":
-            # XXX FIXME this is obviously insecure
-            # if you doubt:
-            # >>> unjellyFromXML('''<string value="h&quot;+str(__import__(&quot;sys&quot;))+&quot;i" />''')
-            # "h<module 'sys' (built-in)>i"
-            retval = str(eval('"%s"' % node.getAttribute("value")))
+            # Note: string-escape is only in 2.3 and newer.
+            retval = node.getAttribute('value').decode('string-escape')
         elif node.tagName == "int":
             retval = int(node.getAttribute("value"))
         elif node.tagName == "float":
@@ -171,7 +173,7 @@ class DOMUnjellier:
                                             im_self,
                                             im_class)
             else:
-                raise "instance method changed"
+                raise ValueError("instance method changed")
         elif node.tagName == "tuple":
             l = []
             tupFunc = tuple
@@ -197,7 +199,7 @@ class DOMUnjellier:
                     if keyMode:
                         kvd = _DictKeyAndValue(d)
                         if not subnode.getAttribute("role") == "key":
-                            raise "Unjellying Error: key role not set"
+                            raise ValueError("Unjellying Error: key role not set")
                         self.unjellyInto(kvd, 0, subnode)
                     else:
                         self.unjellyInto(kvd, 1, subnode)
@@ -233,7 +235,7 @@ class DOMUnjellier:
             from twisted.python import context as ctx
             unm = ctx.get('unmarmalader')
             if unm is None:
-                raise "Unsupported Node Type: %s" % str(node.tagName)
+                raise TypeError("Unsupported Node Type: %s" % str(node.tagName))
             retval = unm(self, node)
         if node.hasAttribute("reference"):
             refkey = node.getAttribute("reference")
@@ -371,7 +373,7 @@ class DOMJellier:
                     n = self.jellyToNode(state)
                     node.appendChild(n)
             else:
-                raise "Unsupported type: %s" % objType.__name__
+                raise TypeError("Unsupported type: %s" % objType.__name__)
         return node
 
     def jelly(self, obj):
