@@ -20,7 +20,7 @@ GLADE_FILE = tputil.sibpath(__file__, "info.glade")
 
 __metaclass__ = type
 
-nodeTypes = [node.SimpleNode, node.TextFileNode]
+nodeTypes = [node.TextFileNode, node.FileSystemNode]
 
 class XML(glade.XML):
     __getitem__ = glade.XML.get_widget
@@ -75,7 +75,7 @@ class GreatUI(gtk2util.GladeKeeper):
 
         # The problem here is that TextViews calculate and update
         # their size_request in an idle call, or something; I can't
-        # figure out a way to have them calcualet their size
+        # figure out a way to have them calculate their size
         # immediately after creation, so I don't know how much room to
         # give them while displaying. I doubt it's possible to do
         # that. So I think the only solution is to give in and just
@@ -93,6 +93,7 @@ class GreatUI(gtk2util.GladeKeeper):
         if parent is None:
             parent = self.root
         if not parent.expanded: return
+        # XXX - make this recursive on the node
         for box in parent.childBoxes:
             # XXX encapsulation
             pwidth, pheight = parent.widget.size_request()
@@ -310,10 +311,6 @@ class BaseNodeUI(util.Forgetter):
         self.controller = controller
         self.parent = parent
 
-        for child in self.node.getChildren():
-            self.childBoxes.append(
-                INodeUI.fromNode(child, self.controller, parent=self)
-                )
         self._makeWidget()
 
     def __setstate__(self, d):
@@ -380,9 +377,8 @@ class BaseNodeUI(util.Forgetter):
 
 
     def toggleShowChildren(self):
-        if not self.childBoxes:
-            return
         self.expanded = not self.expanded
+
         if self.expanded:
             self.show()
         else:
@@ -391,12 +387,17 @@ class BaseNodeUI(util.Forgetter):
 
 
     def show(self):
+        for child in self.node.getChildren():
+            self.childBoxes.append(
+                INodeUI.fromNode(child, self.controller, parent=self)
+                )
         self.widget.show()
 
     def hide(self):
         self.widget.hide()
         for child in self.childBoxes:
             child.hide()
+        self.destroy_widgets()
 
 
 WHITE = gtk.gdk.color_parse('#FFFFFF')
@@ -472,7 +473,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     def _makeWidget(self):
         self.widget = gtk.TextView()
 
-        width = self.childBoxes and 2 or 1
+        width = self.node.getChildren() and 2 or 1
         self.resize_border(width)
 
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
@@ -652,6 +653,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.destroy()
         for x in self.childBoxes:
             x.destroy_widgets()
+        self.childBoxes = []
 
 
     def key_ctrl_x(self):
@@ -814,5 +816,14 @@ class TextFileUI(SimpleNodeUI):
         print "Saving!"
         self.node.save()
 
+class FileSystemUI(SimpleNodeUI):
+    def init(self, controller, parent):
+        self.controller = controller
+        self.parent = parent
+        self._makeWidget()
+
+
+
 components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
 components.registerAdapter(TextFileUI, node.TextFileNode, INodeUI)
+components.registerAdapter(FileSystemUI, node.FileSystemNode, INodeUI)

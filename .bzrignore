@@ -16,3 +16,9 @@ trunk/infogreater/*.ig
 trunk/infogreater/*.mm
 trunk/infogreater/*.pyc
 trunk/infogreater/*.tmp
+trunk/infogreater/test/*.bak
+trunk/infogreater/test/*.gladep
+trunk/infogreater/test/*.ig
+trunk/infogreater/test/*.mm
+trunk/infogreater/test/*.pyc
+trunk/infogreater/test/*.tmp

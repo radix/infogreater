@@ -113,3 +113,13 @@ class TextFileNode(SimpleNode):
             self.writeNode(outf, x.content, 2*level)
             self._save(outf, x.children, level+1)
         
+class FileSystemNode:
+    def __init__(self, path='/'):
+        self.path = path
+
+    def getChildren(self):
+        return [FileSystemNode(path=os.path.join(self.path, path))
+                for path in os.listdir(self.path)]
+
+    def getContent(self):
+        return self.path
