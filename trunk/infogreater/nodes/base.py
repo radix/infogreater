@@ -305,7 +305,8 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
     def key_space(self):
         if self.editing: return
         self.toggleShowChildren()
-        self.focus()
+        from twisted.internet import reactor
+        reactor.callLater(0.1, self.focus)
 
 
     def key_shift_Up(self):

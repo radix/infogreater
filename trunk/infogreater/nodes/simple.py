@@ -103,6 +103,7 @@ class SimpleNodeUI(base.BaseNodeUI):
         self.controller.redisplay()
         self.focus()
 
+
     def placedUnder(self, parent):
         INode(self).parent = INode(parent)
         self._makeWidget()
@@ -129,18 +130,43 @@ class SimpleNodeUI(base.BaseNodeUI):
         # XXX some problem here, for some reason the focus isn't working
         self.uichildren()[index].focus()
 
+        return newnode
+
 
     ##################
     ## Key Handlers ##
     ##################
 
     def key_Insert(self):
-        self.addChild()
+        """
+        Insert a simple child node.
+        """
+        newnode = self.addChild()
+        INodeUI(newnode).startEdit()
         return STOP_EVENT
 
     key_ctrl_i = key_Insert
 
+
+    def key_Return(self):
+        """
+        Either commit the text that was being edited, or insert a new
+        sibling node after this one.
+        """
+        if self.editing:
+            INode(self).setContent(
+                self.buffer.get_text(*self.buffer.get_bounds()))
+            self.immute()
+        else:
+            # iface?
+            newnode = self.uiparent().addChild(after=INode(self))
+            INodeUI(newnode).startEdit()
+
+
     def key_shift_I(self):
+        """
+        Insert a _special_ child node.
+        """
         if self.editing: return
         d = base.presentChoiceMenu("Which node type do you want to create?",
                                    [x[0] for x in base.nodeTypes])
@@ -156,6 +182,9 @@ class SimpleNodeUI(base.BaseNodeUI):
         Put into edit mode.
         """
         if self.editing: return
+        self.startEdit()
+
+    def startEdit(self):
         self.oldText = self.buffer.get_text(*self.buffer.get_bounds())
         self.widget.set_editable(True)
         self.widget.modify_base(gtk.STATE_NORMAL, base.WHITE)
@@ -163,6 +192,9 @@ class SimpleNodeUI(base.BaseNodeUI):
         self.editing = True
 
     def key_ctrl_x(self):
+        """
+        cut
+        """
         if self.editing: return
         snode = INode(self)
         # XXX YOW encapsulation-breaking
@@ -179,6 +211,9 @@ class SimpleNodeUI(base.BaseNodeUI):
 
 
     def key_ctrl_v(self):
+        """
+        paste
+        """
         if self.editing: return
         self.addChild(base.cuts.pop())
 
@@ -193,16 +228,6 @@ class SimpleNodeUI(base.BaseNodeUI):
         sibs.insert(i+modder, box)
         self.controller.redisplay()
         self.focus()
-
-
-    def key_Return(self):
-        if self.editing:
-            INode(self).setContent(
-                self.buffer.get_text(*self.buffer.get_bounds()))
-            self.immute()
-        else:
-            # iface?
-            self.uiparent().addChild(after=INode(self))
 
 
     def key_Escape(self):
