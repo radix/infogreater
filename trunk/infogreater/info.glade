@@ -98,11 +98,20 @@
 		<widget class="GtkMenu" id="menuitem4_menu">
 
 		  <child>
+		    <widget class="GtkMenuItem" id="debug1">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">_Debug</property>
+		      <property name="use_underline">True</property>
+		      <signal name="activate" handler="on_debug_activate" last_modification_time="Fri, 12 Mar 2004 06:51:59 GMT"/>
+		    </widget>
+		  </child>
+
+		  <child>
 		    <widget class="GtkMenuItem" id="about1">
 		      <property name="visible">True</property>
 		      <property name="label" translatable="yes">_About</property>
 		      <property name="use_underline">True</property>
-		      <signal name="activate" handler="on_about1_activate" last_modification_time="Tue, 27 Jan 2004 16:07:23 GMT"/>
+		      <signal name="activate" handler="on_about_activate" last_modification_time="Fri, 12 Mar 2004 06:51:59 GMT"/>
 		    </widget>
 		  </child>
 		</widget>

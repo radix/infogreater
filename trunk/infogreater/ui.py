@@ -154,6 +154,9 @@ class GreatUI(gtk2util.GladeKeeper):
         select.cancel_button.connect('clicked', _eb_no_filename)
         select.show()
 
+    def on_debug_activate(self, thing):
+        import pdb; pdb.set_trace()
+
     def on_quit_activate(self, thing):
         gtk.mainquit()
 
@@ -254,8 +257,9 @@ class BaseNodeUI:
             self._internalMakeWidget()
 
         height = 0
-        for x in self.childBoxes:
-            height += x.calculateHeight() + self.V_PAD
+        if self.expanded:
+            for x in self.childBoxes:
+                height += x.calculateHeight() + self.V_PAD
 
         # Sometimes a node's height will be larger than all of its
         # children's.
