@@ -6,6 +6,7 @@ Keyboard controls
     Ctrl-e: edit current node
     (Edit mode:
       Escape: Cancel editing
+      Shift-Enter: Insert a newline
       Enter: Commit editing
     )
 

@@ -26,8 +26,13 @@ class XML(glade.XML):
     __getitem__ = glade.XML.get_widget
 
 
-# XXX - pasting is fubared
 # XXX - When adding new siblings, auto-scrolling is broken.
+# XXX - Make layout algo incremental :-(
+# XXX - layout breaks on paste of node-with-children.
+# XXX - Save layout in files. Pickle node-UIs, I guess...
+
+# FFF - draw fancy curves between nodes, not straight lines.
+# FFF - Anti-alias the lines between nodes :-)
 # FFF - adapt each interface in a node to an IGUI thing
 # FFF - Other node types! UI for creating them?
 # FFF - separate view for cut-buffer
@@ -302,7 +307,6 @@ class BaseNodeUI:
             return
 
         # Shift child right by my widget-width plus padding.
-        print ":-(" , self.widget.size_request()
         childX = X + self.widget.size_request()[0] + self.H_PAD
 
         # Shift child up by my *total*-height div 2. (so the parent is
@@ -372,9 +376,12 @@ for name in dir(keysyms):
 class FancyKeyMixin:
     def _cbGotKey(self, thing, event):
         print event.keyval, repr(event.string), event.state, repr(keymap[event.keyval])
-        mod = None
-        if event.state & gtk.gdk.CONTROL_MASK: # control
-            mod = 'ctrl'
+        mods = []
+        if event.state & gtk.gdk.CONTROL_MASK:
+            mods.append('ctrl')
+        if event.state & gtk.gdk.SHIFT_MASK:
+            mods.append('shift')
+        mod = '_'.join(mods)
         keyname = keymap[event.keyval]
         if mod:
             name = 'key_%s_%s' % (mod, keyname)
@@ -410,7 +417,6 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.canvas.put(self.widget, 0,0)
         self.widget.hide()
         self.widget.show()
-        print self.widget.size_request()
 
     def focus(self):
         self.widget.grab_focus()
@@ -422,7 +428,6 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
 
     def _cbFocus(self, thing, direction):
-        print "FOCUSED", self
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
         adj = self.controller.cscroll.get_vadjustment()
         alloc = self.widget.get_allocation()        
@@ -549,8 +554,8 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             self.node.setContent(self.buffer.get_text(*self.buffer.get_bounds()))
             self.immute()
         else:
-            self.parent.addChild(after=self) #XXX ifacebraking
-
+            # iface?
+            self.parent.addChild(after=self)
 
     def key_Escape(self):
         if not self.editing: return
