@@ -462,14 +462,21 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         # When a new Node is created it'll get the focus event while
         # the size and position are still -1, -1. So we implement this
         # to scroll to the widget when that happens.
-        if self.widget.is_focus() and not self.focused:
+
+        # Also we need to refocus when the size changes from editing etc.
+        print "size"
+        if (self.widget.is_focus() and not self.focused) or self.editing:
             print "_cbSized to tha fizocus"
             self._cbFocus(None,None)
 
     def _cbFocus(self, thing, direction):
         print "hey someone got focus man", id(self)
         # set the node to blue
-        self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+        if thing is not None:
+            # UGGh. We're using thing=None here as a heuristic that
+            # this is a manually-called _cbFocus instead of the actual
+            # event.
+            self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
 
         # scroll the canvas to show the node
 

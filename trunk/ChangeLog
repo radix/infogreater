@@ -3,7 +3,11 @@
 	* UI: Allow node shifting up and down with Shift-up/down.
 	* UI: C-n/p/f/b are aliased to down/up/right/left.
 	* UI: Ctrl-i also inserts nodes.
-	* UI: Much better automatic scrolling to follow the selection
+	* UI: Much better automatic scrolling to follow the selection.
+	* UI: Fix the bug that made the auto-scrolling code not work when
+	creating a new node.
+	* UI: When typing off the edge of the screen, it will scroll to
+	contain your text.
 	
 2004-05-13  Christopher Armstrong  <radix@twistedmatrix.com>
 
