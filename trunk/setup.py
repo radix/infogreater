@@ -39,4 +39,3 @@ setup_args.update(dict(name="Infogreater",
       ))
 if __name__ == '__main__':
     setup(**setup_args)
-setup(**setup_args)
