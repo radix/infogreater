@@ -88,9 +88,9 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
     editing = False
 
     def _makeWidget(self):
-        if self.widget is not None:
-            print "Booo Hoooooo, I already have a widget :-(((", self
-            return
+##        if self.widget is not None:
+##            print "Booo Hoooooo, I already have a widget :-(((", self
+##            return
         self.widget = gtk.TextView()
         
         width = self.hasChildren() and 2 or 1
