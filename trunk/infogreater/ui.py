@@ -1,11 +1,11 @@
 from __future__ import division
 
-from twisted.python import util, components
+from twisted.python import util as tputil, components, context
 from twisted.spread.ui import gtk2util
 
 from twisted.internet import defer, reactor
 
-from infogreater import node
+from infogreater import node, util
 
 import gtk
 from gtk import glade, keysyms
@@ -16,7 +16,7 @@ import cPickle, os
 
 DEFAULT_FILE = os.path.expanduser('~/.infogreater.data')
 
-GLADE_FILE = util.sibpath(__file__, "info.glade")
+GLADE_FILE = tputil.sibpath(__file__, "info.glade")
 
 
 __metaclass__ = type
@@ -65,10 +65,9 @@ class GreatUI(gtk2util.GladeKeeper):
         self.filename = DEFAULT_FILE
 
         if os.path.exists(DEFAULT_FILE):
-            self.basenode = cPickle.load(open(DEFAULT_FILE, 'rb'))
+            self.loadFromPickle(DEFAULT_FILE)
         else:
-            self.basenode = node.SimpleNode()
-        self.root = INodeUI.fromNode(self.basenode, self, self.canvas)
+            self.loadNode(node.SimpleNode())
 
         # XXX HUGE HACK
 
@@ -117,14 +116,23 @@ class GreatUI(gtk2util.GladeKeeper):
 
     def on_new_activate(self, thing):
         self.filename = None
-        self._load(node.SimpleNode())
+        self.loadNode(node.SimpleNode())
 
 
-    def _load(self, node):
+    def loadFromPickle(self, fn):
+        for x in self.canvas.get_children():
+            x.destroy()
+        root = context.call({'controller': self}, cPickle.load, open(fn, 'rb'))
+        self.root = root
+        self.basenode = root.node
+        self.redisplay()
+
+
+    def loadNode(self, node):
         for x in self.canvas.get_children():
             x.destroy()
         self.basenode = node
-        self.root = INodeUI.fromNode(self.basenode, self, self.canvas)
+        self.root = INodeUI.fromNode(self.basenode, self)
         self.redisplay()
 
 
@@ -134,7 +142,7 @@ class GreatUI(gtk2util.GladeKeeper):
             fn = select.get_filename()
             select.destroy()
             self.filename = fn
-            self._load(cPickle.load(open(fn, 'rb')))
+            self.loadFromPickle(fn)
 
         def _eb_no_filename(button):
             select.destroy()
@@ -146,8 +154,8 @@ class GreatUI(gtk2util.GladeKeeper):
 
     def _save(self, filename):
         self.filename = filename
-        print "dumping", self.basenode, self.basenode.getChildren()
-        cPickle.dump(self.basenode, open(self.filename, 'wb'))
+        print "dumping", self.root
+        cPickle.dump(self.root, open(self.filename, 'wb'))
 
 
     def on_save_activate(self, thing):
@@ -187,12 +195,9 @@ class INodeUI(components.Interface):
     (usually a node.INode implementor, but it doesn't really matter).
     """
     # Not interface.
-    def fromNode(node, controller, canvas, parent=None):
+    def fromNode(node, controller, parent=None):
         nui = INodeUI(node)
-        nui.controller = controller
-        nui.canvas = canvas
-        nui.parent = parent
-        nui.init()
+        nui.init(controller, parent)
         return nui
     fromNode = staticmethod(fromNode)
 
@@ -248,7 +253,7 @@ class INodeUI(components.Interface):
         """
 
 
-class BaseNodeUI:
+class BaseNodeUI(util.Forgetter):
     """
     Make sure subclasses define:
     attr widget: The outermost widget.
@@ -257,9 +262,9 @@ class BaseNodeUI:
     
     __implements__ = (INodeUI,)
 
+
     visible = True
     expanded = True
-
 
     V_PAD = 10
     H_PAD = 20
@@ -270,11 +275,23 @@ class BaseNodeUI:
         self.node = node
         self.childBoxes = []
 
-    def init(self):
+
+    persistenceForgets = ['controller', 'widget']
+    contextRemembers = [('controller', 'controller')]
+
+    def init(self, controller, parent):
+        self.controller = controller
+        self.parent = parent
+
         for child in self.node.getChildren():
             self.childBoxes.append(
-                INodeUI.fromNode(child, self.controller, self.canvas, parent=self)
+                INodeUI.fromNode(child, self.controller, parent=self)
                 )
+        self._makeWidget()
+
+    def __setstate__(self, d):
+        util.Forgetter.__setstate__(self, d)
+        print "my controller is", self.controller
         self._makeWidget()
 
 
@@ -294,11 +311,10 @@ class BaseNodeUI:
 
 
     def redisplay(self, X, Y):
-        # XXX This is *full* of random tweaks! Heh! (and it needs more)
         assert Y >= 0, (X, Y)
 
         self.widget.hide()
-        self.canvas.move(self.widget, X, Y)
+        self.controller.canvas.move(self.widget, X, Y)
         self.X = X
         self.Y = Y
         self.widget.show()
@@ -398,7 +414,7 @@ STOP_EVENT = True # Just to make it more obvious.
 class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
 
-
+    persistenceForgets = ['buffer']
     
     def _makeWidget(self):
         self.widget = gtk.TextView()
@@ -414,9 +430,8 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
 
-        self.canvas.put(self.widget, 0,0)
+        self.controller.canvas.put(self.widget, 0,0)
         self.widget.hide()
-        self.widget.show()
 
     def focus(self):
         self.widget.grab_focus()
@@ -453,7 +468,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.resize_border(2)
         if newnode is None:
             newnode = node.SimpleNode()
-        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas, parent=self)
+        newbox = INodeUI.fromNode(newnode, self.controller, parent=self)
         if after is not None:
             index = self.node.children.index(after.node)+1
             self.node.children.insert(index, newnode)
@@ -597,7 +612,7 @@ components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
 ##        #self.w['PropBox'].pack_start(gtk2form.menu(node, self.controller.redisplay))
 
 ##        # put it at arbitrary location and hide it: let someone reposition it soon.
-##        self.canvas.put(self.widget, 0, 0)
+##        self.controller.canvas.put(self.widget, 0, 0)
 ##        self.widget.hide()
 
 ##        proptog = self.w['ShowPropsTog']
@@ -647,7 +662,7 @@ components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
 ##    def on_NewChild_clicked(self, btn):
 ##        newnode = node.DataNode([])
 ##        self.node.putChild(newnode)
-##        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas, parent=self)
+##        newbox = INodeUI.fromNode(newnode, self.controller, parent=self)
 ##        self.childBoxes.append(newbox)
 
 ##        childtog = self.w['ShowChildrenTog']
