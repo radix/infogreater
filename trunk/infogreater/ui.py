@@ -235,7 +235,7 @@ class BaseNodeUI:
     expanded = True
 
 
-    V_PAD = 0
+    V_PAD = 10
     H_PAD = 20
 
     widget = None
