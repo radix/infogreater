@@ -30,28 +30,23 @@ identical.
 
 import new, compiler
 
+from zope import interface
+
 from twisted.python.reflect import namedModule, namedClass, namedObject, fullFuncName, qual
-from twisted.python import components
 from twisted.persisted.crefutil import NotKnown, _Tuple, _InstanceMethod, _DictKeyAndValue, _Dereference, _Defer
 
-try:
-    from new import instancemethod
-except:
-    from org.python.core import PyMethod
-    instancemethod = PyMethod
+from new import instancemethod
 
 import types
 import copy_reg
 
-#for some reason, __builtins__ == __builtin__.__dict__ in the context where this is used.
-#Can someone tell me why?
 import __builtin__ 
 
 class reference(object):
     def __init__(self, referent):
         self.referent = referent
 
-class IUnmarmalader(components.Interface):
+class IUnmarmalader(interface.Interface):
     def __call__(self, unjellier, element):
         """
         Unjelly some element to a microdom Node.
@@ -448,9 +443,9 @@ def jellyToXML(object, file=None):
     """
     document = jellyToDOM(object)
     if file:
-        document.writexml(file, "", "  ", "\n")
+        document.writeprettyxml(file)
     else:
-        return document.toprettyxml("  ", "\n")
+        return document.toprettyxml()
 
 def unjellyFromXML(stringOrFile):
     """I convert a string or the contents of an XML file into a Python object.

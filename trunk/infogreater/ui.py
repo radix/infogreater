@@ -1,42 +1,43 @@
 from __future__ import division
 
 from cStringIO import StringIO
-import cPickle, os
+import os
 
-from twisted.python import util as tputil, components, context as ctx
+from zope import interface
+
+from twisted.python import util as tputil, context as ctx
 from twisted.spread.ui import gtk2util
 from twisted.internet import defer, reactor
 
 import gtk
-from gtk import glade, keysyms
+from gtk import glade
 from gtkgoodies import tree
 
-from infogreater import node, util
+from infogreater import util, facets, xmlobject
+from infogreater.nodes import base
+
 
 
 DEFAULT_FILE = os.path.expanduser('~/.infogreater.data')
 GLADE_FILE = tputil.sibpath(__file__, "info.glade")
 
-
 __metaclass__ = type
-
-nodeTypes = [node.TextFileNode, node.FileSystemNode]
 
 class XML(glade.XML):
     __getitem__ = glade.XML.get_widget
-
 
 # FFF - draw fancy curves between nodes, not straight lines.
 # FFF - Anti-alias the lines between nodes :-)
 # FFF - Other node types! UI for creating them?
 # FFF - separate view for cut-buffer
 
+BLACK = gtk.gdk.color_parse('#000000')
+
 class GreatUI(gtk2util.GladeKeeper):
 
     gladefile = GLADE_FILE
 
     _widgets = ('MainWindow', 'NodeFrame', 'Canvas')
-
 
     def __init__(self, filename=None):
         self.w = XML(self.gladefile, 'MainWindow')
@@ -59,17 +60,15 @@ class GreatUI(gtk2util.GladeKeeper):
 
         self.tree = tree.Tree(self.w['NodeTree'], [('Node', str)])
 
-
-
         if filename is not None:
             self.filename = filename
         else:
             self.filename = DEFAULT_FILE
 
         if os.path.exists(self.filename):
-            self.loadFromPickle(self.filename)
+            self.loadFromXML(self.filename)
         else:
-            self.loadNode(node.SimpleNode())
+            self.loadNode(simple.SimpleNode())
 
         # XXX HUGE HACK
 
@@ -84,17 +83,16 @@ class GreatUI(gtk2util.GladeKeeper):
 
         # XXX This is a huge bug it must be fixed!
         reactor.callLater(0.2, lambda: (self.redisplay(), self.root.widget.grab_focus()))
-        # End hack
-
         self.root.widget.grab_focus()
-
+        # End hack
 
     def drawLines(self, parent=None):
         if parent is None:
             parent = self.root
         if not parent.expanded: return
         # XXX - make this recursive on the node
-        for box in parent.childBoxes:
+        for box in base.INode(parent).getChildren():
+            box = base.INodeUI(box)
             # XXX encapsulation
             pwidth, pheight = parent.widget.size_request()
             bheight = box.widget.size_request()[1]
@@ -126,24 +124,23 @@ class GreatUI(gtk2util.GladeKeeper):
 
     def on_new_activate(self, thing):
         self.filename = None
-        self.loadNode(node.SimpleNode())
+        self.loadNode(simple.SimpleNode())
 
 
-    def loadFromPickle(self, fn):
+    def loadFromXML(self, fn):
         for x in self.canvas.get_children():
             x.destroy()
-        root = ctx.call({'controller': self}, cPickle.load, open(fn, 'rb'))
-        self.root = root
-        print "ROOT AM", repr(root)
-        self.basenode = root.node
+        root = ctx.call({'controller': self},
+                        xmlobject.fromXML, open(fn, 'rb').read())
+        self.root = base.INodeUI(root)
+        #print "ROOT AM", repr(root.original)
         self.redisplay()
 
 
     def loadNode(self, node):
         for x in self.canvas.get_children():
             x.destroy()
-        self.basenode = node
-        self.root = INodeUI.fromNode(self.basenode, self)
+        self.root = node
         self.redisplay()
 
 
@@ -153,7 +150,7 @@ class GreatUI(gtk2util.GladeKeeper):
             fn = select.get_filename()
             select.destroy()
             self.filename = fn
-            self.loadFromPickle(fn)
+            self.loadFromXML(fn)
 
         def _eb_no_filename(button):
             select.destroy()
@@ -168,7 +165,9 @@ class GreatUI(gtk2util.GladeKeeper):
         print "dumping", self.root
         tmpfn = filename + '.tmp~~~'
         try:
-            cPickle.dump(self.root, open(tmpfn, 'wb'))
+            f = open(tmpfn, 'w')
+            xmlobject.toXML(self.root, f)
+            f.close()
         except Exception, e:
             msg = ("There was an error saving your file. :-(\n"
                    "Please report this as a bug. The traceback follows.\n\n")
@@ -216,613 +215,3 @@ class GreatUI(gtk2util.GladeKeeper):
         gtk.mainquit()
 
 
-
-class INodeUI(components.Interface):
-    """
-    The user interface for interacting with a particular kind of node
-    (usually a node.INode implementor, but it doesn't really matter).
-    """
-    # Not interface.
-    def fromNode(node, controller, parent=None):
-        nui = INodeUI(node)
-        nui.init(controller, parent)
-        return nui
-    fromNode = staticmethod(fromNode)
-
-    # Interface.
-
-    expanded = property(doc="Whether or not this node's children are visible.")
-
-    height = property(doc="""The current cached total height of the node.
-    XXX(lowpri) This should be unnecessary.""")
-
-    childBoxes = property(doc="""The children (list of INodeUIs) of this node.
-    XXX Being in the interface is *really* unnecessary, it's only used
-    externally for its truth value when doing some display
-    calculations. It could probably be replaced with
-    hasChildren(). Hell... Shouldn't the 'expand' attribute be fully
-    sufficient?""")
-    
-
-    def calculateHeight(self):
-        """
-        Return the total height required by this node and all of its
-        children, and set the 'height' attribute of this node to it.
-
-        I'm pretty sure there are good reasons to explicitly separate
-        calculation of the height and access of the cached value. I
-        don't think it's reasonably possible to make accessing the
-        value transparently recompute it when necessary, because I'm
-        not sure when it's necessary. Bleh. Or maybe not, it's
-        probably possible after all, but I'm not gonna worry about it
-        now!
-
-        I'm pretty sure that when the widget is invisible, it should
-        just return 0.
-        """
-
-
-    def redisplay(self):
-        """
-        Redraw this node and all visible children nodes (preferably by
-        calling redisplay() on them!)
-        """
-
-
-    def hide(self):
-        """
-        Hide this node and all children.
-        """
-
-
-    def focus(self):
-        """
-        'Select' this node.
-        """
-
-
-class BaseNodeUI(xmlobject.XMLObject):
-    """
-    Make sure subclasses define:
-    attr widget: The outermost widget.
-    meth _makeWidget: etc
-    """
-    
-    __implements__ = (INodeUI,)
-
-
-    visible = True
-    expanded = True
-
-    V_PAD = 10
-    H_PAD = 20
-
-    widget = None
-
-    def __init__(self, node):
-        self.node = node
-        self.childBoxes = []
-
-    contextRemembers = [('controller', 'controller')]
-
-    def init(self, controller, parent):
-        self.controller = controller
-        self.parent = parent
-        self._makeWidget()
-
-
-    def setXMLState(self, attrs, children):
-        xmlobject.XMLObject.setXMLState(self, attrs, children)
-        self.parent = ctx.get('xmlparent')
-        self._makeWidget()
-
-
-    def calculateHeight(self):
-        height = 0
-        if self.expanded:
-            for x in self.childBoxes:
-                height += x.calculateHeight() + self.V_PAD
-
-        # Sometimes a node's height will be larger than all of its
-        # children's.
-        myheight = self.widget.size_request()[1]
-        height = max(myheight, height)
-        
-        self.height = height
-        return height
-
-
-    def redisplay(self, X, Y):
-        assert Y >= 0, (X, Y)
-
-        self.widget.hide()
-        self.controller.canvas.move(self.widget, X, Y)
-        self.X = X
-        self.Y = Y
-        self.widget.show()
-
-        if not (self.expanded and self.childBoxes):
-            return
-
-        # Shift child right by my widget-width plus padding.
-        childX = X + self.widget.size_request()[0] + self.H_PAD
-
-        # Shift child up by my *total*-height div 2. (so the parent is
-        # in the Y-middle of the children).
-        childY = Y - (self.height // 2)
-
-        first = self.childBoxes[0]
-
-        # WHAT???? XXX This centers it, but I don't know why it's
-        # necessary! I would understand it if fixed.moved's arguments
-        # were the new *center* of the widget... but that doesn't make
-        # sense!
-        childY = childY + (first.height // 2)
-
-        first.redisplay(childX, childY)
-
-        prevHeight = first.height
-
-        for child in self.childBoxes[1:]:
-
-            # Hmm. Why isn't this just "+= prevHeight"?? It screws things
-            # up if it is. I think maybe it *should* be prevHeight,
-            # but something somewhere *else* is being too annoying to
-            # allow it to be. How about that "WHAT???" above? XXX.
-            childY += (prevHeight // 2) + (child.height // 2)
-            childY += self.V_PAD
-            child.redisplay(childX, childY)
-            prevHeight = child.height
-
-
-    def toggleShowChildren(self):
-        self.expanded = not self.expanded
-
-        if self.expanded:
-            self.show()
-        else:
-            self.hide()
-        self.controller.redisplay()
-
-
-    def show(self):
-        for child in self.node.getChildren():
-            self.childBoxes.append(
-                INodeUI.fromNode(child, self.controller, parent=self)
-                )
-        self.widget.show()
-
-    def hide(self):
-        self.widget.hide()
-        for child in self.childBoxes:
-            child.hide()
-        self.destroy_widgets()
-
-
-WHITE = gtk.gdk.color_parse('#FFFFFF')
-LBLUE = gtk.gdk.color_parse('#AAAAFF')
-BLUE = gtk.gdk.color_parse('#0000FF')
-GREEN = gtk.gdk.color_parse('#00FF00')
-DGREEN = gtk.gdk.color_parse('#00AA00')
-BLACK = gtk.gdk.color_parse('#000000')
-
-cuts = []
-
-keymap = {}
-for name in dir(keysyms):
-    try:
-        keymap[getattr(keysyms, name)] = name
-    except TypeError:
-        pass
-
-class FancyKeyMixin:
-    def _cbGotKey(self, thing, event):
-        print event.keyval, repr(event.string), event.state, repr(keymap[event.keyval])
-        mods = []
-        if event.state & gtk.gdk.CONTROL_MASK:
-            mods.append('ctrl')
-        if event.state & gtk.gdk.SHIFT_MASK:
-            mods.append('shift')
-        mod = '_'.join(mods)
-        keyname = keymap[event.keyval]
-        if mod:
-            name = 'key_%s_%s' % (mod, keyname)
-        else:
-            name = 'key_%s' % keyname
-        print name
-        m = getattr(self, name, None)
-        if m:
-            return m()
-
-
-def presentChoiceMenu(question, choices):
-    d = defer.Deferred()
-
-    w = gtk.Window()
-    w.connect('destroy',
-              lambda *a: (not d.called) and d.errback(Exception("Closed")))
-    w.set_title(question)
-
-    vb = gtk.VBox()
-    w.add(vb)
-
-    vb.pack_start(gtk.Label(question))
-    vbb = gtk.VButtonBox()
-
-    vb.pack_start(vbb)
-    for i,choice in enumerate(choices):
-        b = gtk.Button(choice)
-        print "button", b, choice
-        b.connect('clicked', lambda foo, i=i: (d.callback(i), w.destroy()))
-        vbb.add(b)
-
-    w.show_all()
-
-    return d
-    
-
-STOP_EVENT = True # Just to make it more obvious.
-
-
-class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
-    editing = False
-    
-    persistenceForgets = ['buffer', 'treeiter']
-    
-    def _makeWidget(self):
-        self.widget = gtk.TextView()
-
-        width = self.node.getChildren() and 2 or 1
-        self.resize_border(width)
-
-        self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
-        self.buffer = self.widget.get_buffer()
-        self.buffer.set_text(self.node.getContent())
-
-        # bleh :( must delay treeing because this is called from
-        # __setstate__ before my parent's __setstate__ has been called
-
-        reactor.callLater(0, self.getTreeIter)
-
-        self.widget.set_editable(False)
-        self.widget.connect('key-press-event', self._cbGotKey)
-        self.widget.connect('focus-in-event', self._cbFocus)
-        self.widget.connect('focus-out-event', self._cbLostFocus)
-        self.widget.connect('size-allocate', self._cbSized)
-        self.widget.connect('populate-popup', self._cbPopup)
-
-        self.controller.canvas.put(self.widget, 0,0)
-        self.widget.hide()
-
-
-    def getTreeIter(self):
-        if hasattr(self, 'treeiter'):
-            return self.treeiter
-        if self.parent == None:
-            print "The parent was None on", self.node.getContent()
-            parentiter = None
-        else:
-            parentiter = self.parent.getTreeIter()
-        self.treeiter = self.controller.tree.add(
-            {'Node': self.node.getContent()}, parentiter)
-        return self.treeiter
-
-
-    def resize_border(self, width):
-        for thingy in (gtk.TEXT_WINDOW_LEFT, gtk.TEXT_WINDOW_RIGHT,
-                       gtk.TEXT_WINDOW_TOP, gtk.TEXT_WINDOW_BOTTOM):
-            self.widget.set_border_window_size(thingy, width)
-
-
-
-    def _cbPopup(self, textview, menu):
-        print "HEY POPUP", menu
-
-    focused = False
-
-
-    def focus(self):
-        if self.widget.is_focus():
-            #print "I am the focus! So I will bypass etc."
-            return self._cbFocus(None, None)
-        self.widget.grab_focus()
-
-
-    def _cbSized(self, thing, alloc):
-        # When a new Node is created it'll get the focus event while
-        # the size and position are still -1, -1. So we implement this
-        # to scroll to the widget when that happens.
-
-        # Also we need to refocus when the size changes from editing etc.
-        if (self.widget.is_focus() and not self.focused) or self.editing:
-            #print "_cbSized to tha fizocus"
-            self._cbFocus(None,None)
-
-    def _cbFocus(self, thing, direction):
-        #print "hey someone got focus man", id(self)
-        # set the node to blue
-        if thing is not None:
-            # UGGh. We're using thing=None here as a heuristic that
-            # this is a manually-called _cbFocus instead of the actual
-            # event.
-
-            # The point is that this call triggers a size-event, so
-            # _cbSized gets called, which calls this. UGH.
-            self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
-
-        # scroll the canvas to show the node
-
-        alloc = self.widget.get_allocation()
-        # XXX make this optional
-##        yadj = self.controller.cscroll.get_vadjustment()
-##        xadj = self.controller.cscroll.get_hadjustment()
-
-        width, height = self.controller.cscroll.window.get_geometry()[2:4]
-##        print width, height
-##        yadj.set_value(alloc.y - height/2)
-##        xadj.set_value(alloc.x - width/2)
-##        return
-
-        # XXX make this optional
-        #print "y! x!", alloc.y, alloc.x
-        if alloc.y == -1 or alloc.x == -1:
-            self.focused = False
-            return
-        self.focused = True
-        for pos, size, windowsize, adj in [
-            (alloc.y, alloc.height, height,
-             self.controller.cscroll.get_vadjustment()),
-            (alloc.x, alloc.width, width,
-             self.controller.cscroll.get_hadjustment())
-            ]:
-
-            if pos < adj.value or pos+size > adj.value + adj.page_size:
-                adj.set_value(pos+(size/2) - windowsize/2)
-                #adj.set_value(min(pos, adj.upper - adj.page_size))
-
-
-
-    def _cbLostFocus(self, thing, thing2):
-        self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
-        if self.editing:
-            self.cancelEdit()
-
-    def immute(self):
-        self.widget.set_editable(False)
-        self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
-        self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
-        self.editing = False
-        self.controller.redisplay()
-        self.focus()
-
-
-    def addChild(self, newnode=None, after=None):
-        self.resize_border(2)
-        if newnode is None:
-            newnode = node.SimpleNode()
-        newbox = INodeUI.fromNode(newnode, self.controller, parent=self)
-        if after is not None:
-            index = self.node.children.index(after.node)+1
-            self.node.children.insert(index, newnode)
-            self.childBoxes.insert(index, newbox)
-        else:
-            self.node.putChild(newnode)
-            self.childBoxes.append(newbox)
-            index = -1
-        self.controller.redisplay()
-        #print "done redisplaying, focusing new baby", id(self.childBoxes[index])
-        # XXX some problem here, for some reason the focus isn't working
-        self.childBoxes[index].focus()
-
-
-    ##################
-    ## Key Handlers ##
-    ##################
-
-    def key_Insert(self):
-        self.addChild()
-        return STOP_EVENT
-
-    key_ctrl_i = key_Insert
-
-    def key_shift_I(self):
-        if self.editing: return
-        print "HEY"
-        d = presentChoiceMenu("Which node type do you want to create?",
-                              [x.__name__ for x in nodeTypes])
-        d.addCallback(self._cbGotNodeChoice)
-
-    def _cbGotNodeChoice(self, index):
-        nt = nodeTypes[index]
-        self.addChild(nt())
-
-
-    def key_ctrl_e(self):
-        """
-        Put into edit mode.
-        """
-        if self.editing: return
-        self.oldText = self.buffer.get_text(*self.buffer.get_bounds())
-        self.widget.set_editable(True)
-        self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
-        self.widget.modify_bg(gtk.STATE_NORMAL, DGREEN)
-        self.editing = True
-
-    def destroy_widgets(self):
-        self.widget.destroy()
-        for x in self.childBoxes:
-            x.destroy_widgets()
-        self.childBoxes = []
-
-
-    def key_ctrl_x(self):
-        if self.editing: return
-        # XXX YOW encapsulation-breaking
-        i = self.parent.node.children.index(self.node)
-        del self.parent.node.children[i]
-        del self.parent.childBoxes[i]
-        self.destroy_widgets()
-        self.controller.redisplay()
-        self.parent.focus()
-        cuts.append(self.node)
-        # XXX - there will be other places that destroy nodes soon; refactor 
-        if not self.parent.childBoxes:
-            # XXX - encapsulation :(
-            self.parent.resize_border(1)
-
-
-    def key_ctrl_v(self):
-        if self.editing: return
-        self.addChild(cuts.pop())
-
-
-    def key_space(self):
-        if self.editing: return
-        self.toggleShowChildren()
-        self.focus()
-
-
-    def _shift(self, modder):
-        # XXX encapsulation
-        i = self.parent.node.children.index(self.node)
-        node = self.parent.node.children.pop(i)
-        box = self.parent.childBoxes.pop(i)
-        self.parent.node.children.insert(i+modder, node)
-        self.parent.childBoxes.insert(i+modder, box)
-        self.controller.redisplay()
-        self.focus()
-
-    def key_shift_Up(self):
-        return self._shift(-1)
-
-    def key_shift_Down(self):
-        return self._shift(+1)
-        
-
-    def key_Return(self):
-        if self.editing:
-            self.node.setContent(
-                self.buffer.get_text(*self.buffer.get_bounds()))
-            self.immute()
-        else:
-            # iface?
-            self.parent.addChild(after=self)
-
-    def key_Escape(self):
-        if not self.editing: return
-        self.cancelEdit()
-
-    def cancelEdit(self):
-        print "cancelling edit!"
-        self.immute()
-        self.buffer.set_text(self.oldText)
-        del self.oldText
-        #reactor.callLater(0, self.focus)
-
-    def key_ctrl_l(self):
-        self.focus()
-
-
-
-    ## Navigation ##
-
-    def key_Right(self):
-        if self.editing: return
-        if not self.expanded:
-            self.toggleShowChildren()
-        if self.childBoxes:
-            self.childBoxes[len(self.childBoxes)//2].focus()
-        return STOP_EVENT
-
-    key_ctrl_f = key_Right
-
-
-    def key_Left(self):
-        if self.editing: return
-        if self.parent:
-            self.parent.focus()
-        return STOP_EVENT
-
-    key_ctrl_b = key_Left
-
-    def key_Down(self):
-
-        # XXX - if there's nothing below, traverse parents backward
-        # (up the tree) until I find one that has a lower sibling;
-        # check the lower sibling if it has a node as many levels deep
-        # as I traversed up; switch to it. If it doesn't, keep going
-        # back/down until I find one.
-
-        # A - B - C <-- hits downarrow when C is selected
-        # | 
-        # D - E
-        # |
-        # F - G - H <-- should end up here.
-        
-        if self.editing: return
-        if self.parent:
-            index = self.parent.childBoxes.index(self)+1
-            if len(self.parent.childBoxes) <= index:
-                #index = 0
-                return
-            
-            self.parent.childBoxes[index].focus()
-
-    key_ctrl_n = key_Down
-
-    def key_Up(self):
-        # XXX - Same XXX as key_Down, except reversed.
-        if self.editing: return
-        i = self.parent.childBoxes.index(self)-1
-        if i == -1: return
-        if self.parent:
-            self.parent.childBoxes[i].focus()
-
-    key_ctrl_p = key_Up
-
-
-def getFileName(glob='*'):
-    d = defer.Deferred()
-
-    fs = gtk.FileSelection()
-    fs.complete(glob)
-    fs.ok_button.connect('clicked',
-                         lambda a: d.callback(fs.get_filename()))
-    fs.cancel_button.connect('clicked',
-                             lambda a: d.errback(Exception("Cancelled")))
-    fs.show_all()
-    d.addBoth(lambda r: (fs.destroy(), r)[1])
-    return d
-
-
-class TextFileUI(SimpleNodeUI):
-    def init(self, controller, parent):
-        print "HEY GETTING FILENAME"
-        d = getFileName('*.txt')
-        def gotIt(r):
-            self.node.setFilename(r)
-        d.addCallback(gotIt)
-        SimpleNodeUI.init(self, controller, parent)
-
-    def _cbPopup(self, textview, menu):
-        print "adding MI!"
-        mi = gtk.MenuItem('save to %s' % (self.node.filename,))
-        mi.connect('activate', self._cbSave)
-        menu.append(mi)
-        menu.show_all()
-
-    def _cbSave(self, mi):
-        print "Saving!"
-        self.node.save()
-
-class FileSystemUI(SimpleNodeUI):
-    def init(self, controller, parent):
-        self.controller = controller
-        self.parent = parent
-        self._makeWidget()
-
-
-
-components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
-components.registerAdapter(TextFileUI, node.TextFileNode, INodeUI)
-components.registerAdapter(FileSystemUI, node.FileSystemNode, INodeUI)

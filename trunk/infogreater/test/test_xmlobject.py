@@ -1,5 +1,5 @@
 from twisted.trial import unittest
-from infogreater.xmlobject import XMLObject, fromXML, reference, IXMLParent
+from infogreater.xmlobject import XMLObject, fromXML, toXML, reference, IXMLParent
 
 class ParentyXO(XMLObject):
     contextRemembers = [(IXMLParent, 'parent')]
@@ -16,7 +16,7 @@ class XOTest(unittest.TestCase):
         origo.children.append(reference(origo))
         origo.children.append(ParentyXO(attrs={'ha': 'qoob'}))
 
-        origx = origo.toXML()
+        origx = toXML(origo)
 
         newo = fromXML(origx)
 
@@ -24,7 +24,7 @@ class XOTest(unittest.TestCase):
         self.assertEquals(len(newo.children), len(origo.children))
         self.assertIdentical(newo.children[2].referent, newo)
 
-        newx = newo.toXML()
+        newx = toXML(newo)
         self.assertEquals(origx, newx)
 
     def testParents(self):
@@ -34,7 +34,7 @@ class XOTest(unittest.TestCase):
             ParentyXO({'name': 'child'}),
             ]
             )
-        origx = origo.toXML()
+        origx = toXML(origo)
 
         newo = fromXML(origx)
 
