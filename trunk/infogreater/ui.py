@@ -26,14 +26,8 @@ class XML(glade.XML):
     __getitem__ = glade.XML.get_widget
 
 
-# XXX - When adding new siblings, auto-scrolling is broken.
-# XXX - Make layout algo incremental :-(
-# XXX - layout breaks on paste of node-with-children.
-# XXX - Save layout in files. Pickle node-UIs, I guess...
-
 # FFF - draw fancy curves between nodes, not straight lines.
 # FFF - Anti-alias the lines between nodes :-)
-# FFF - adapt each interface in a node to an IGUI thing
 # FFF - Other node types! UI for creating them?
 # FFF - separate view for cut-buffer
 
@@ -115,6 +109,7 @@ class GreatUI(gtk2util.GladeKeeper):
         # the root node half-way down the height.
         width, height = self.canvas.window.get_geometry()[2:4]
         self.canvas.window.clear_area_e(0,0, width, height)
+        # xxx god this is fucked
         if not hasattr(self, 'root'):
             reactor.callLater(0, self.redisplay)
             return
@@ -453,17 +448,31 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
 
     def _cbFocus(self, thing, direction):
+        print "hey someone got focus man", id(self)
         # set the node to blue
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+
         # scroll the canvas to show the node
+
         alloc = self.widget.get_allocation()
-        for orient, adj in [('y', self.controller.cscroll.get_vadjustment()),
-                            ('x', self.controller.cscroll.get_hadjustment())
-                            ]:
-            pos = getattr(alloc, orient)
-            if pos < adj.value or pos > adj.value + adj.page_size:
-                print "READJUSTING SCROLLYTHING", orient
-                adj.set_value(min(pos, adj.upper - adj.page_size))
+        # XXX make this optional
+##        yadj = self.controller.cscroll.get_vadjustment()
+##        xadj = self.controller.cscroll.get_hadjustment()
+
+        width, height = self.controller.cscroll.window.get_geometry()[2:4]
+##        print width, height
+##        yadj.set_value(alloc.y - height/2)
+##        xadj.set_value(alloc.x - width/2)
+##        return
+
+        # XXX make this optional
+        for pos, size, windowsize, adj in [
+            (alloc.y, alloc.height, height, self.controller.cscroll.get_vadjustment()),
+            (alloc.x, alloc.width, width, self.controller.cscroll.get_hadjustment())
+            ]:
+            if pos < adj.value or pos+size > adj.value + adj.page_size:
+                adj.set_value(pos+(size/2) - windowsize/2)
+                #adj.set_value(min(pos, adj.upper - adj.page_size))
 
 
 
@@ -495,6 +504,8 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             self.childBoxes.append(newbox)
             index = -1
         self.controller.redisplay()
+        print "done redisplaying, focusing new baby", id(self.childBoxes[index])
+        # XXX some problem here, for some reason the focus isn't working
         self.childBoxes[index].focus()
 
 
