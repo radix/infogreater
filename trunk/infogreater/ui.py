@@ -294,7 +294,7 @@ class BaseNodeUI:
 
         first = self.childBoxes[0]
 
-        # WHAT???? This centers it, but I don't know why it's
+        # WHAT???? XXX This centers it, but I don't know why it's
         # necessary! I would understand it if fixed.moved's arguments
         # were the new *center* of the widget... but that doesn't make
         # sense!
@@ -343,7 +343,31 @@ GREEN = gtk.gdk.color_parse('#00FF00')
 DGREEN = gtk.gdk.color_parse('#00AA00')
 BLACK = gtk.gdk.color_parse('#000000')
 
-class SimpleNodeUI(BaseNodeUI):
+cuts = []
+
+keymap = {}
+for name in dir(keysyms):
+    try:
+        keymap[getattr(keysyms, name)] = name
+    except TypeError:
+        pass
+
+class FancyKeyMixin:
+    def _cbGotKey(self, thing, event):
+        print event.keyval, repr(event.string), event.state, repr(keymap[event.keyval])
+        mod = None
+        if event.state & 4: # control
+            mod = 'ctrl'
+        keyname = keymap[event.keyval]
+        if mod:
+            name = 'key_%s_%s' % (mod, keyname)
+        else:
+            name = 'key_%s' % keyname
+        m = getattr(self, name, None)
+        if m:
+            return m()
+        
+class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
 
     # XXX - Conversion to TextViews for SimpleNodes
@@ -361,6 +385,7 @@ class SimpleNodeUI(BaseNodeUI):
         self.widget.connect('changed', self._cbChanged)
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
+
         self.canvas.put(self.widget, 0,0)
         self.widget.hide()
 
@@ -372,7 +397,6 @@ class SimpleNodeUI(BaseNodeUI):
             )
 
     def _cbFocus(self, thing, direction):
-        print direction
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
 
     def _cbChanged(self, *a):
@@ -383,10 +407,6 @@ class SimpleNodeUI(BaseNodeUI):
         if self.editing:
             self.cancelEdit()
 
-    def commit(self):
-        self.node.setContent(self.widget.get_text())
-        self.immute()
-
     def immute(self):
         self.widget.set_editable(False)
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
@@ -395,77 +415,10 @@ class SimpleNodeUI(BaseNodeUI):
         self.controller.redisplay()
         self.widget.grab_focus()
 
-    def _cbGotKey(self, thing, event):
-        print event.keyval
-        if event.keyval == keysyms.Insert:
-            self.widget.stop_emission('key-press-event')
-            self.addChild()
-        elif not self.editing:
-            self.widget.stop_emission('key-press-event')
-            if event.keyval == keysyms.e:
-                self.edit()
-            elif event.keyval == keysyms.space:
-                self.toggleShowChildren()
-                self.widget.grab_focus()
-            elif event.keyval == keysyms.Right:
-                self.moveRight()
-            elif event.keyval == keysyms.Left:
-                self.moveLeft()
-            elif event.keyval == keysyms.Return:
-                self.parent.addChild(after=self) #XXX ifacebraking
-        elif self.editing:
-            if event.keyval == keysyms.Escape:
-                self.cancelEdit()
-            elif event.keyval == keysyms.Return:
-                self.commit()
 
-
-    def moveRight(self):
-        if not self.childBoxes:
-            # Hack: don't unfocus the current widget if it's a leafnode.
-            # lame: I really ought to be stopping whatever's
-            # handling key-press-event from handling it and choosing a
-            # widget to focus (it ain't the canvas; i can't figure out
-            # _what_ it is)
-
-            # Note: I'm actually relying on the semantics of whatever
-            # *is* handling key-press-event here, by letting it choose
-            # the widget to focus. Its algorithm is fairly good.
-            
-            reactor.callLater(0,self.widget.grab_focus)
-        elif not self.expanded:
-            self.toggleShowChildren()
-            reactor.callLater(0, self.childBoxes[0].widget.grab_focus)
-
-
-    def moveLeft(self):
-        if self.parent:
-            reactor.callLater(0, self.parent.widget.grab_focus)
-        else:
-            # lame hack: see moveRight
-            reactor.callLater(0,self.widget.grab_focus)
-
-
-    def edit(self):
-        self.oldText = self.widget.get_text()
-        self.widget.set_editable(True)
-        self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
-        self.widget.modify_bg(gtk.STATE_NORMAL, DGREEN)
-        #reactor.callLater(0, self.widget.grab_focus)
-        self.editing = True
-
-
-    def cancelEdit(self):
-        print "cancelling edit!"
-        self.immute()
-        self.widget.set_text(self.oldText)
-        self.resize()
-        del self.oldText
-        #reactor.callLater(0, self.widget.grab_focus)
-
-
-    def addChild(self, after=None):
-        newnode = node.SimpleNode()
+    def addChild(self, newnode=None, after=None):
+        if newnode is None:
+            newnode = node.SimpleNode()
         newbox = INodeUI.fromNode(newnode, self.controller, self.canvas, parent=self)
         if after is not None:
             index = self.node.children.index(after.node)+1
@@ -477,6 +430,92 @@ class SimpleNodeUI(BaseNodeUI):
             index = -1
         self.controller.redisplay()
         self.childBoxes[index].widget.grab_focus()
+
+
+    ##################
+    ## Key Handlers ##
+    ##################
+
+    def key_Insert(self):
+        self.widget.stop_emission('key-press-event')
+        self.addChild()
+        return True
+
+
+    def key_ctrl_e(self):
+        """
+        Put into edit mode.
+        """
+        if self.editing:
+            return
+        self.oldText = self.widget.get_text()
+        self.widget.set_editable(True)
+        self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
+        self.widget.modify_bg(gtk.STATE_NORMAL, DGREEN)
+        #reactor.callLater(0, self.widget.grab_focus)
+        self.editing = True
+
+
+    def key_ctrl_x(self):
+        if self.editing: return
+        # XXX YOW encapsulation-breaking
+        i = self.parent.node.children.index(self.node)
+        del self.parent.node.children[i]
+        del self.parent.childBoxes[i]
+        self.widget.destroy()
+        self.controller.redisplay()
+        self.parent.widget.grab_focus()
+        cuts.append(self.node)
+
+
+    def key_ctrl_v(self):
+        if self.editing: return
+        self.addChild(cuts.pop())
+
+
+    def key_space(self):
+        if self.editing: return
+        self.toggleShowChildren()
+        self.widget.grab_focus()
+
+
+    def key_Right(self):
+        #self.widget.stop_emission('key-press-event')
+        if self.editing:
+            return
+        if not self.expanded:
+            self.toggleShowChildren()
+        if self.childBoxes:
+            self.childBoxes[0].widget.grab_focus()
+        return True
+
+
+    def key_Left(self):
+        #self.widget.stop_emission('key-press-event')
+        if self.editing: return
+        if self.parent:
+            self.parent.widget.grab_focus()
+        return True
+
+
+    def key_Return(self):
+        if self.editing:
+            self.node.setContent(self.widget.get_text())
+            self.immute()
+        else:
+            self.parent.addChild(after=self) #XXX ifacebraking
+
+
+    def key_Escape(self):
+        if not self.editing: return
+        print "cancelling edit!"
+        self.immute()
+        self.widget.set_text(self.oldText)
+        self.resize()
+        del self.oldText
+        #reactor.callLater(0, self.widget.grab_focus)
+
+
 
 
 
