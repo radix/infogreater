@@ -43,9 +43,8 @@ Special Nodes
 TextFileNode
 ------------
 
-Currently the only special node is TextFileNode. It saves itself and
-its children in a simple text file with a nested bulleted list, like
-the following:
+This saves itself and its children in a simple text file with a nested
+bulleted list, like the following:
 
 -- snip --
 TODO
