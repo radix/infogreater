@@ -1,22 +1,27 @@
-from infogreater import node, ui
-from twisted.web import microdom
+import sys
+from xml.dom import minidom
 
 def freemindToNodes(filename):
-    doc = microdom.parseXML(filename)
+    doc = minidom.parse(filename)
     top = doc.childNodes[0]
     assert top.tagName == 'map', "This doesn't look like freemind to me!"
-    return map(fmn2ign, top.childNodes)
+    return filter(None, map(fmn2ign, top.childNodes))
 
 def fmn2ign(fmnode):
-    text = fmnode.getAttribute('TEXT')
-    print "Text is", text
+    if isinstance(fmnode, minidom.Text) and fmnode.data.isspace():
+        return None
+    text = fmnode.getAttribute('TEXT')#.replace('&#xa;', '\n')
+    print >> sys.stderr, "TEXT", repr(text)
+    node = minidom.Element('SimpleNode')
+    for attr,v in [('content', text),
+                   ('expanded', 'False')]:
+        node.setAttribute(attr,v)
 
-    n = ui.INodeUI(node.SimpleNode(text))
-    children = [fmn2ign(x) for x in fmnode.childNodes if x.tagName == 'node']
-    for child in children:
-        childbox = ui.INodeUI(child)
-        n.childBoxes.append(childbox)
-        childbox.parent = n
-    n.node.children = children
-    return n
-        
+    children = filter(None,
+                      [fmn2ign(x)
+                       for x in fmnode.childNodes if x.nodeName == 'node'])
+    node.childNodes = children
+    return node
+
+if __name__ == '__main__':
+    print freemindToNodes(sys.argv[1])[0].toprettyxml()

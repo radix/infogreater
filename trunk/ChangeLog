@@ -1,3 +1,11 @@
+2004-07-17  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Nasty bugs fixed: pasting was broken in the 0.0.3 release
+	:-( Now fixed. Also when inserting a child, expand the parent.
+
+	* FreeMind: Updated infogreater/freemind.py to write the new
+	format.
+
 2004-07-15  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* Installation: Add distutils support thanks to Sourav K. Mandal.
