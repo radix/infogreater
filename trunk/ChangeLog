@@ -1,3 +1,10 @@
+2004-07-18  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Newly created nodes (with Return or Insert) are now
+	automatically put into edit mode.
+	* UI: Nodes now have a minimum width, so empty nodes aren't so
+	weird looking any more.
+
 2004-07-17  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* UI: Nasty bugs fixed: pasting was broken in the 0.0.3 release
