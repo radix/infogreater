@@ -11,7 +11,11 @@ gtk2reactor.install()
 
 from infogreater import ui
 
-ui.GreatUI()
+args = []
+if len(sys.argv) > 1:
+    args.append(sys.argv[1])
+    
+ui.GreatUI(*args)
 
 from twisted.internet import reactor
 reactor.run()

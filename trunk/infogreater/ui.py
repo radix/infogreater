@@ -44,7 +44,7 @@ class GreatUI(gtk2util.GladeKeeper):
     _widgets = ('MainWindow', 'NodeFrame', 'Canvas')
 
 
-    def __init__(self):
+    def __init__(self, filename=None):
         self.w = XML(self.gladefile, 'MainWindow')
 
         mold = {}
@@ -62,10 +62,13 @@ class GreatUI(gtk2util.GladeKeeper):
         self.lineGC = gtk.gdk.GC(self.canvas.window)
         self.lineGC.set_rgb_fg_color(BLACK)
         #self.lineGC.line_width = 2
-        self.filename = DEFAULT_FILE
+        if filename is not None:
+            self.filename = filename
+        else:
+            self.filename = DEFAULT_FILE
 
-        if os.path.exists(DEFAULT_FILE):
-            self.loadFromPickle(DEFAULT_FILE)
+        if os.path.exists(self.filename):
+            self.loadFromPickle(self.filename)
         else:
             self.loadNode(node.SimpleNode())
 
