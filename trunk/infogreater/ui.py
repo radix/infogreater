@@ -155,10 +155,11 @@ class INodeUI(components.Interface):
     (usually a node.INode implementor, but it doesn't really matter).
     """
     # Not interface.
-    def fromNode(node, controller, canvas):
+    def fromNode(node, controller, canvas, parent=None):
         nui = INodeUI(node)
         nui.controller = controller
         nui.canvas = canvas
+        nui.parent = parent
         return nui
     fromNode = staticmethod(fromNode)
 
@@ -232,7 +233,7 @@ class BaseNodeUI:
     def _internalMakeWidget(self):
         for child in self.node.getChildren():
             self.childBoxes.append(
-                INodeUI.fromNode(child, self.controller, self.canvas)
+                INodeUI.fromNode(child, self.controller, self.canvas, parent=self)
                 )
         self._makeWidget()
 
@@ -320,8 +321,10 @@ class SimpleNodeUI(BaseNodeUI):
         self.widget = gtk.Entry()
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
         self.widget.set_text(self.node.getContent())
+        self.resize()
         self.widget.set_editable(False)
         self.widget.connect('key-press-event', self._cbGotKey)
+        self.widget.connect('changed', self._cbChanged)
         #XXX ARGH this doesn't happen on mouse-click DAMNIT
         #self.widget.connect('focus', self._cbFocus)
         self.widget.connect('focus-in-event', self._cbFocus)
@@ -330,9 +333,18 @@ class SimpleNodeUI(BaseNodeUI):
         self.widget.hide()
 
 
+    def resize(self):
+        # XXX this *1.4 is sucky and buggy. I shouldn't need to mult at _all_!
+        self.widget.set_width_chars(
+            len(self.widget.get_text())*1.4
+            )
+
     def _cbFocus(self, thing, direction):
         print direction
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+
+    def _cbChanged(self, *a):
+        self.resize()
 
     def _cbLostFocus(self, thing, thing2):
         self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
@@ -341,7 +353,15 @@ class SimpleNodeUI(BaseNodeUI):
 
     def commit(self):
         self.node.setContent(self.widget.get_text())
+        self.immute()
 
+    def immute(self):
+        self.widget.set_editable(False)
+        self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
+        self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
+        self.editing = False
+        self.controller.redisplay()
+        self.widget.grab_focus()
 
     def _cbGotKey(self, thing, event):
         print event.keyval
@@ -355,12 +375,34 @@ class SimpleNodeUI(BaseNodeUI):
             elif event.keyval == keysyms.space:
                 self.toggleShowChildren()
                 self.widget.grab_focus()
+            elif event.keyval == keysyms.Right:
+                self.moveRight()
+            elif event.keyval == keysyms.Left:
+                self.moveLeft()
         elif self.editing:
             if event.keyval == keysyms.Escape:
                 self.cancelEdit()
             elif event.keyval == keysyms.Return:
                 self.commit()
 
+
+    def moveRight(self):
+        if not self.expanded:
+            self.toggleShowChildren()
+        if not self.childBoxes:
+            # Hack: don't unfocus the current widget if it's a leafnode.
+            # lame: I really ought to be stopping whatever's
+            # handling key-press-event from handling it and choosing a
+            # widget to focus (it ain't the canvas; i can't figure out
+            # _what_ it is)
+            reactor.callLater(0,self.widget.grab_focus)
+
+    def moveLeft(self):
+        if self.parent:
+            reactor.callLater(0, self.parent.widget.grab_focus)
+        else:
+            # lame hack: see moveRight
+            reactor.callLater(0,self.widget.grab_focus)
 
     def edit(self):
         self.oldText = self.widget.get_text()
@@ -373,22 +415,21 @@ class SimpleNodeUI(BaseNodeUI):
 
     def cancelEdit(self):
         print "cancelling edit!"
-        self.widget.set_editable(False)
+        self.immute()
         self.widget.set_text(self.oldText)
-        self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
-        self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
-        self.widget.grab_focus()
+        self.resize()
         del self.oldText
         #reactor.callLater(0, self.widget.grab_focus)
-        self.editing = False
+
 
 
     def addChild(self):
         newnode = node.SimpleNode()
         self.node.putChild(newnode)
-        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas)
+        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas, parent=self)
         self.childBoxes.append(newbox)
         self.controller.redisplay()
+        self.childBoxes[-1].widget.grab_focus()
 
 
 
@@ -467,7 +508,7 @@ components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
 ##    def on_NewChild_clicked(self, btn):
 ##        newnode = node.DataNode([])
 ##        self.node.putChild(newnode)
-##        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas)
+##        newbox = INodeUI.fromNode(newnode, self.controller, self.canvas, parent=self)
 ##        self.childBoxes.append(newbox)
 
 ##        childtog = self.w['ShowChildrenTog']
