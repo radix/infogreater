@@ -59,7 +59,9 @@ class GreatUI(gtk2util.GladeKeeper):
         self.canvas.connect('expose-event', lambda *a: self.drawLines())
         self.lineGC = gtk.gdk.GC(self.canvas.window)
         self.lineGC.set_rgb_fg_color(BLACK)
-        self.lineGC.line_width = 2
+        #self.lineGC.line_width = 2
+        self.clearGC = gtk.gdk.GC(self.canvas.window)
+        self.clearGC.set_rgb_fg_color(WHITE)
         self.filename = DEFAULT_FILE
 
         if os.path.exists(DEFAULT_FILE):
@@ -85,6 +87,8 @@ class GreatUI(gtk2util.GladeKeeper):
             self.drawLines(box)
         
     def redisplay(self):
+        width, height = self.canvas.window.get_geometry()[2:4]
+        self.canvas.window.clear_area_e(0,0, width, height)
         if not hasattr(self, 'root'):
             reactor.callLater(0, self.redisplay)
             return
