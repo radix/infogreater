@@ -1,3 +1,11 @@
+2004-07-09  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* Persistence: A big rewrite, originally spurred by the need for a
+	better file saving/loading solution. Switched from Pickle to an
+	XML file format. To convert your old pickles to the new XML
+	format, run 'python infogreater/upgradepickle.py YOUR_PICKLE >
+	YOUR_XML'.
+
 2004-06-12  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* Node: TextFileNode, a new node that saves itself and its
@@ -26,7 +34,7 @@
 	creating a new node.
 	* UI: When typing off the edge of the screen, it will scroll to
 	contain your text.
-	
+
 2004-05-13  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* Infogreater 0.1 released.

@@ -215,5 +215,3 @@ class GreatUI(gtk2util.GladeKeeper):
         gtk.mainquit()
 
 
-from infogreater.nodes import simple, filesystem, textfile
-nodeTypes = [textfile.TextFileNode, filesystem.FileSystemNode]

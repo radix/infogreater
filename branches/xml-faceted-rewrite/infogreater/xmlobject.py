@@ -64,6 +64,16 @@ class XMLObject(marmalade.DOMJellyable, object):
     __implements__ = IXMLObject,
     tagName = 'XMLObject'
 
+    def __init__(self, attrs=None, children=None, tagName=None):
+        if attrs is None: attrs = {}
+        if children is None: children = []
+
+        self.attrs = attrs
+        self.children = children
+
+        if tagName is not None:
+            self.tagName = tagName
+
     def __getstate__(self):
         raise Exception("XMLObjects are not automatically persistable.")
 
@@ -126,5 +136,3 @@ def unmarmaladeXO(unjellier, element):
     return inst
 
 
-def boolFromString(s):
-    return 'True' == s and True or False

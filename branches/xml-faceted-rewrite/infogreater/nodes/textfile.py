@@ -1,43 +1,24 @@
 import os
 
-from infogreater.nodes import simple
+import gtk
 
-def getFileName(glob='*'):
-    d = defer.Deferred()
+from twisted.internet import defer
+from twisted.python import context as ctx
 
-    fs = gtk.FileSelection()
-    fs.complete(glob)
-    fs.ok_button.connect('clicked',
-                         lambda a: d.callback(fs.get_filename()))
-    fs.cancel_button.connect('clicked',
-                             lambda a: d.errback(Exception("Cancelled")))
-    fs.show_all()
-    d.addBoth(lambda r: (fs.destroy(), r)[1])
-    return d
-
+from infogreater.nodes import base, simple
+from infogreater import facets, xmlobject
+from infogreater.nodes.base import INode, INodeUI
 
 class TextFileNode(simple.SimpleNode):
 
-    def __init__(self, filename='THIS SUCKS.TXT'):
-        SimpleNode.__init__(self)
+    def __init__(self, original, filename='THIS SUCKS.TXT'):
+        simple.SimpleNode.__init__(self, original)
         self.filename = filename
         self.load()
 
 
     def setFilename(self, fn):
         self.filename = fn
-        self.load()
-
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        del d['content']
-        del d['children']
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__ = d
-        self.content = ""
-        self.children = []
         self.load()
 
 
@@ -103,22 +84,84 @@ class TextFileNode(simple.SimpleNode):
             self._save(outf, x.children, level+1)
 
 
+def getFileName(glob='*'):
+    d = defer.Deferred()
+
+    fs = gtk.FileSelection()
+    fs.complete(glob)
+    fs.ok_button.connect('clicked',
+                         lambda a: d.callback(fs.get_filename()))
+    fs.cancel_button.connect('clicked',
+                             lambda a: d.errback(Exception("Cancelled")))
+    fs.show_all()
+    d.addBoth(lambda r: (fs.destroy(), r)[1])
+    return d
+
+
 class TextFileUI(simple.SimpleNodeUI):
-    def init(self, controller, parent):
-        print "HEY GETTING FILENAME"
-        d = getFileName('*.txt')
-        def gotIt(r):
-            self.original.setFilename(r)
-        d.addCallback(gotIt)
-        simple.SimpleNodeUI.init(self, controller, parent)
 
     def _cbPopup(self, textview, menu):
         print "adding MI!"
-        mi = gtk.MenuItem('save to %s' % (self.original.filename,))
+        mi = gtk.MenuItem('save to %s' % (INode(self).filename,))
         mi.connect('activate', self._cbSave)
         menu.append(mi)
         menu.show_all()
 
     def _cbSave(self, mi):
         print "Saving!"
-        self.original.save()
+        INode(self).save()
+
+
+class TextNodeXML(base.BaseNodeXML):
+    # Relying on order of bases here to say that __init__ comes from
+    # Facet and ignore XMLObject's __init__
+    tagName = 'TextFile'
+
+    def getXMLState(self):
+        return self.getAttrs(), self.getChildren()
+
+
+    def getAttrs(self):
+        nodeui = INodeUI(self)
+        node = INode(self)
+        return {'expanded': str(nodeui.expanded),
+                'filename': node.filename}
+
+    def getChildren(self):
+        # The children get persisted to the text file.
+        return []
+
+
+    def setXMLState(self, attrs, children, parent):
+        node = INode(self)
+        node.parent = INode(parent, None)
+        node.setFilename(attrs['filename'])
+        node.load()
+
+        nodeui = INodeUI(self)
+        nodeui.expanded = attrs['expanded'] == "True"
+        nodeui.controller = ctx.get('controller')
+        nodeui._makeWidget()
+
+def makeTextBase():
+    faced = facets.Faceted()
+    faced[INode] = TextFileNode(faced)
+    faced[INodeUI] = TextFileUI(faced)
+    faced[xmlobject.IXMLObject] = TextNodeXML(faced)
+    faced[facets.IReprable] = INode(faced)
+    return faced
+
+# XXX Use plugins or context something
+xmlobject.unmarmaladerRegistry['TextFile'] = makeTextBase
+
+def makeText(controller):
+    textnode = makeTextBase()
+    nodeui = INodeUI(textnode)
+    nodeui.controller = controller
+    nodeui._makeWidget()
+    node = INode(textnode)
+
+    d = getFileName('*.txt')
+    d.addCallback(node.setFilename)
+
+    return textnode

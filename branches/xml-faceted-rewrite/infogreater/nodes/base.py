@@ -5,7 +5,9 @@ from gtk import keysyms
 
 from zope import interface
 
-from infogreater import facets
+from twisted.internet import defer
+
+from infogreater import facets, xmlobject
 
 class INode(interface.Interface):
     """
@@ -79,9 +81,6 @@ class BaseNodeUI(facets.Facet):
 
     widget = None
 
-    def init(self, controller):
-        self.controller = controller
-        self._makeWidget()
 
     def uiparent(self):
         return INodeUI(INode(self).parent, None)
@@ -183,6 +182,18 @@ class BaseNodeUI(facets.Facet):
         for x in self.uichildren():
             x.destroyChildren()
 
+
+
+class BaseNodeXML(facets.Facet, xmlobject.XMLObject):
+    # Relying on order of bases here to say that __init__ comes from
+    # Facet and ignore XMLObject's __init__
+    tagName = None # set this in subclasses
+
+    def getXMLState(self):
+        return self.getAttrs(), self.getChildren()
+
+    def getChildren(self):
+        return [xmlobject.IXMLObject(x) for x in INode(self).children]
 
 
 WHITE = gtk.gdk.color_parse('#FFFFFF')

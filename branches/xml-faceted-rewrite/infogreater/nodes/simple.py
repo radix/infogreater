@@ -34,22 +34,13 @@ class SimpleNode(facets.Facet):
     __repr__ = __str__
 
 
-class SimpleNodeXML(facets.Facet, xmlobject.XMLObject):
-    # Relying on order of bases here to say that __init__ comes from
-    # Facet and ignore XMLObject's __init__
+class SimpleNodeXML(base.BaseNodeXML):
     tagName = 'SimpleNode'
-
-    def getXMLState(self):
-        return self.getAttrs(), self.getChildren()
 
     def getAttrs(self):
         nodeui = INodeUI(self)
         return {'content': INode(self).getContent(),
                 'expanded': str(nodeui.expanded)}
-
-    def getChildren(self):
-        return [xmlobject.IXMLObject(x) for x in INode(self).children]
-
 
     def setXMLState(self, attrs, children, parent):
         node = INode(self)
@@ -58,7 +49,7 @@ class SimpleNodeXML(facets.Facet, xmlobject.XMLObject):
         node.children = [INode(x) for x in children or []]
 
         nodeui = INodeUI(self)
-        nodeui.expanded = xmlobject.boolFromString(attrs['expanded'])
+        nodeui.expanded = attrs['expanded'] == "True"
         nodeui.controller = ctx.get('controller')
         nodeui._makeWidget()
 
@@ -243,12 +234,12 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         if self.editing: return
         print "HEY"
         d = base.presentChoiceMenu("Which node type do you want to create?",
-                              [x.__name__ for x in nodeTypes])
+                                   [x.__name__ for x in base.nodeTypes])
         d.addCallback(self._cbGotNodeChoice)
 
     def _cbGotNodeChoice(self, index):
-        nt = nodeTypes[index]
-        self.addChild(nt())
+        factory = base.nodeTypes[index]
+        self.addChild(factory(self.controller))
 
 
     def key_ctrl_e(self):
