@@ -376,7 +376,6 @@ STOP_EVENT = True # Just to make it more obvious.
 class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
 
-    # XXX - TextView
     # XXX - Some visual distinction for nodes-with-children
     # XXX - Conversion to other Node types ?
     # XXX - cut'n'paste
@@ -386,9 +385,10 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
     def _makeWidget(self):
         self.widget = gtk.TextView()
-        for thingy in (gtk.TEXT_WINDOW_LEFT, gtk.TEXT_WINDOW_RIGHT, gtk.TEXT_WINDOW_TOP, gtk.TEXT_WINDOW_BOTTOM):
-            self.widget.set_border_window_size(thingy, 2)
-        
+
+        width = self.childBoxes and 2 or 1
+        self.resize_border(width)
+
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
         self.buffer = self.widget.get_buffer()
         self.buffer.set_text(self.node.getContent())
@@ -402,6 +402,10 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.show()
         print self.widget.size_request()
 
+    def resize_border(self, width):
+        for thingy in (gtk.TEXT_WINDOW_LEFT, gtk.TEXT_WINDOW_RIGHT,
+                       gtk.TEXT_WINDOW_TOP, gtk.TEXT_WINDOW_BOTTOM):
+            self.widget.set_border_window_size(thingy, width)
 
 
     def _cbFocus(self, thing, direction):
@@ -458,6 +462,10 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.modify_bg(gtk.STATE_NORMAL, DGREEN)
         self.editing = True
 
+    def destroy_widgets(self):
+        self.widget.destroy()
+        for x in self.childBoxes:
+            x.destroy_widgets()
 
     def key_ctrl_x(self):
         if self.editing: return
@@ -466,7 +474,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         del self.parent.node.children[i]
         del self.parent.childBoxes[i]
         # XXX - crap, cutting nodes-with-children is broken
-        self.widget.destroy()
+        self.destroy_widgets()
         self.controller.redisplay()
         self.parent.widget.grab_focus()
         cuts.append(self.node)
@@ -501,7 +509,10 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     def key_Down(self):
         if self.editing: return
         if self.parent:
-            self.parent.childBoxes[self.parent.childBoxes.index(self)+1].widget.grab_focus()
+            index = self.parent.childBoxes.index(self)+1
+            if len(self.parent.childBoxes) <= index:
+                index = 0
+            self.parent.childBoxes[index].widget.grab_focus()
 
     def key_Up(self):
         if self.editing: return
