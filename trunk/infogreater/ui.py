@@ -10,6 +10,7 @@ from infogreater import node, util
 import gtk
 from gtk import glade, keysyms
 
+from gtkgoodies import tree
 
 
 import cPickle, os
@@ -56,6 +57,11 @@ class GreatUI(gtk2util.GladeKeeper):
         self.lineGC = gtk.gdk.GC(self.canvas.window)
         self.lineGC.set_rgb_fg_color(BLACK)
         #self.lineGC.line_width = 2
+
+        self.tree = tree.Tree(self.w['NodeTree'], [('Node', str)])
+
+
+
         if filename is not None:
             self.filename = filename
         else:
@@ -104,7 +110,7 @@ class GreatUI(gtk2util.GladeKeeper):
         algorithm needs to be made incremental and respond to resizing
         of individual nodes.
         """
-        print "I AM REDISPLAYING"
+        #print "I AM REDISPLAYING"
         # Get the height of the entire tree, and position and display
         # the root node half-way down the height.
         width, height = self.canvas.window.get_geometry()[2:4]
@@ -416,7 +422,6 @@ STOP_EVENT = True # Just to make it more obvious.
 
 class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
-
     
     persistenceForgets = ['buffer']
     
@@ -429,6 +434,12 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
         self.buffer = self.widget.get_buffer()
         self.buffer.set_text(self.node.getContent())
+
+        # bleh :( must delay treeing because this is called from
+        # __setstate__ before my parent's __setstate__ has been called
+
+        reactor.callLater(0, self.getTreeIter)
+
         self.widget.set_editable(False)
         self.widget.connect('key-press-event', self._cbGotKey)
         self.widget.connect('focus-in-event', self._cbFocus)
@@ -439,6 +450,17 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.hide()
 
 
+    def getTreeIter(self):
+        if hasattr(self, 'treeiter'):
+            return self.treeiter
+        if self.parent == None:
+            print "The parent was None on", self.node.getContent()
+            parentiter = None
+        else:
+            parentiter = self.parent.getTreeIter()
+        self.treeiter = self.controller.tree.add(
+            {'Node': self.node.getContent()}, parentiter)
+        return self.treeiter
 
 
     def resize_border(self, width):
@@ -453,7 +475,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
     def focus(self):
         if self.widget.is_focus():
-            print "I am the focus! So I will bypass etc."
+            #print "I am the focus! So I will bypass etc."
             return self._cbFocus(None, None)
         self.widget.grab_focus()
 
@@ -465,11 +487,11 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
         # Also we need to refocus when the size changes from editing etc.
         if (self.widget.is_focus() and not self.focused) or self.editing:
-            print "_cbSized to tha fizocus"
+            #print "_cbSized to tha fizocus"
             self._cbFocus(None,None)
 
     def _cbFocus(self, thing, direction):
-        print "hey someone got focus man", id(self)
+        #print "hey someone got focus man", id(self)
         # set the node to blue
         if thing is not None:
             # UGGh. We're using thing=None here as a heuristic that
@@ -494,7 +516,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 ##        return
 
         # XXX make this optional
-        print "y! x!", alloc.y, alloc.x
+        #print "y! x!", alloc.y, alloc.x
         if alloc.y == -1 or alloc.x == -1:
             self.focused = False
             return
@@ -540,7 +562,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             self.childBoxes.append(newbox)
             index = -1
         self.controller.redisplay()
-        print "done redisplaying, focusing new baby", id(self.childBoxes[index])
+        #print "done redisplaying, focusing new baby", id(self.childBoxes[index])
         # XXX some problem here, for some reason the focus isn't working
         self.childBoxes[index].focus()
 

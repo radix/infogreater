@@ -68,6 +68,6 @@ WITH A FRIGGIN' NEWLINE
         tn.load(StringIO(content))
         io = StringIO()
         tn.save(io)
-        self.assertEquals(io.getvalue(), content)        
+        self.assertEquals(io.getvalue(), content)
 
 

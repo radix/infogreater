@@ -1,3 +1,8 @@
+2004-06-10  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Display a GtkTree of your nodes on open; it doesn't yet
+	follow changes you make.
+
 2004-06-07  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* UI: Allow node shifting up and down with Shift-up/down.
