@@ -30,7 +30,6 @@ class XML(glade.XML):
 #    *more ideas
 #   *Simple nodes to make the common case of FreeMind-like usage acceptable.
 #    *Look up INodeUI implementors as adapters of Nodes [Done, but iface needs bettered]
-#   *Lines between nodes
 #   *adapting each interface in a node to an IGUI thing?
 #   *"caching" of nodes and properties is either too lazy or too
 #     strict. fix! facilitate totally dynamic stuff!
@@ -60,6 +59,7 @@ class GreatUI(gtk2util.GladeKeeper):
         self.canvas.connect('expose-event', lambda *a: self.drawLines())
         self.lineGC = gtk.gdk.GC(self.canvas.window)
         self.lineGC.set_rgb_fg_color(BLACK)
+        self.lineGC.line_width = 2
         self.filename = DEFAULT_FILE
 
         if os.path.exists(DEFAULT_FILE):
@@ -75,7 +75,13 @@ class GreatUI(gtk2util.GladeKeeper):
         if parent is None:
             parent = self.root
         for box in parent.childBoxes:
-            self.canvas.window.draw_line(self.lineGC, parent.X, parent.Y, box.X, box.Y)
+            # XXX encapsulation
+            pwidth, pheight = parent.widget.size_request()
+            bheight = box.widget.size_request()[1]
+            self.canvas.window.draw_line(
+                self.lineGC, parent.X+pwidth,
+                int(parent.Y+(pheight/2)), box.X, int(box.Y+(bheight/2))
+                )
             self.drawLines(box)
         
     def redisplay(self):
