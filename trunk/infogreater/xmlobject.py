@@ -2,6 +2,7 @@
 
 from twisted.python import reflect, context as ctx
 from infogreater import marmalade
+reference = marmalade.reference
 
 class XMLObject(marmalade.DOMJellyable, object):
     """
@@ -19,6 +20,11 @@ class XMLObject(marmalade.DOMJellyable, object):
     the 'attributes' object. That is, you cannot just persist
     arbitrary objects with this, therefore, there is less room to
     screw up.
+
+    NOTE: References to objects elsewhere in your graph are
+    DISALLOWED. If you want a 'secondary reference', use an
+    xmlobject.reference(theReferent). The 'referent' attribute of
+    'reference' instances gives you the referent object.
     """
     
     def __init__(self, attrs=None, children=None):
@@ -29,6 +35,7 @@ class XMLObject(marmalade.DOMJellyable, object):
         """
         self.attrs = attrs
         self.children = children
+        self.repr = repr
 
     def __getstate__(self):
         raise Exception("XMLObjects are not automatically persistable.")
@@ -49,24 +56,40 @@ class XMLObject(marmalade.DOMJellyable, object):
         self.attrs = attrs
         self.children = children
 
+        l = []
+        reflect.accumulateClassList(self.__class__, 'contextRemembers', l)
+        for contextName, attributeName in l:
+            setattr(self, attributeName, ctx.get(contextName))
+
     def toXML(self):
         return marmalade.jellyToXML(self)
 
+
+from twisted.python import components
+class IXMLParent(components.Interface):
+    """
+    Nothing required of implementors. This is used as a context key to
+    find the parent of an XMLObject during setXMLState.
+    """
+
+
 def fromXML(xml):
-    return ctx.call({'unmarmalader': unmarmalader},
+    return ctx.call({marmalade.IUnmarmalader: unmarmalader},
                     marmalade.unjellyFromXML, xml)
 
 def unmarmalader(unjellier, element):
     # XXX needs secured
+    klass = reflect.namedAny(element.tagName)
+    inst = marmalade.instance(klass, {})
+
     children = None
     if element.childNodes:
         children = [None]*len(element.childNodes)
         i = 0
         for childNode in element.childNodes:
-            unjellier.unjellyInto(children, i, childNode)
+            ctx.call({IXMLParent: inst},
+                     unjellier.unjellyInto, children, i, childNode)
             i += 1
-    klass = reflect.namedAny(element.tagName)
-    inst = marmalade.instance(klass, {})
     inst.setXMLState(element.attributes, children)
     return inst
 

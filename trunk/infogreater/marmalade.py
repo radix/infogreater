@@ -31,6 +31,7 @@ identical.
 import new, compiler
 
 from twisted.python.reflect import namedModule, namedClass, namedObject, fullFuncName, qual
+from twisted.python import components
 from twisted.persisted.crefutil import NotKnown, _Tuple, _InstanceMethod, _DictKeyAndValue, _Dereference, _Defer
 
 try:
@@ -46,6 +47,15 @@ import copy_reg
 #Can someone tell me why?
 import __builtin__ 
 
+class reference(object):
+    def __init__(self, referent):
+        self.referent = referent
+
+class IUnmarmalader(components.Interface):
+    def __call__(self, unjellier, element):
+        """
+        Unjelly some element to a microdom Node.
+        """
 
 def instance(klass, d):
     if isinstance(klass, types.ClassType):
@@ -221,11 +231,13 @@ class DOMUnjellier:
                 retval = inst
         elif node.tagName == "reference":
             refkey = node.getAttribute("key")
-            retval = self.references.get(refkey)
-            if retval is None:
+            referent = self.references.get(refkey)
+            if referent is None:
                 der = _Dereference(refkey)
                 self.references[refkey] = der
                 retval = der
+            else:
+                retval = reference(referent)
         elif node.tagName == "copyreg":
             nodefunc = namedObject(node.getAttribute("loadfunc"))
             loaddef = self.unjellyLater(getValueElement(node)).addCallback(
@@ -233,7 +245,7 @@ class DOMUnjellier:
             retval = loaddef
         else:
             from twisted.python import context as ctx
-            unm = ctx.get('unmarmalader')
+            unm = ctx.get(IUnmarmalader)
             if unm is None:
                 raise TypeError("Unsupported Node Type: %s" % str(node.tagName))
             retval = unm(self, node)
@@ -243,7 +255,7 @@ class DOMUnjellier:
             if ref is None:
                 self.references[refkey] = retval
             elif isinstance(ref, NotKnown):
-                ref.resolveDependants(retval)
+                ref.resolveDependants(reference(retval))
                 self.references[refkey] = retval
             else:
                 assert 0, "Multiple references with the same ID!"
@@ -264,8 +276,7 @@ class DOMJellier:
         self.document = Document()
         self._ref_id = 0
 
-    def prepareElement(self, element, object):
-        self.prepared[id(object)] = (object, element)
+
 
     def jellyToNode(self, obj):
         """Create a node representing the given object and return it.
@@ -321,22 +332,51 @@ class DOMJellier:
             node = self.document.createElement("function")
             node.setAttribute("name", fullFuncName(obj))
         else:
-            #mutable!
-            if self.prepared.has_key(id(obj)):
-                oldNode = self.prepared[id(obj)][1]
+            # mutable!
+
+            ## Handle references. In marmalade, references are
+            ## implicit; but xmlobject-marmalade makes them
+            ## explicit. Why? Because we want structure to be
+            ## meaningful; some "secondary" reference to an object
+            ## should not cause the referent to be serialized from the
+            ## "secondary" referrer.
+
+            if objType is not reference:
+                if self.prepared.has_key(id(obj)):
+                    raise ValueError("XMLObject does not allow implicit references (to %r)" % (obj,))
+            else:
+                obj = obj.referent
+                if not self.prepared.has_key(id(obj)):
+                    # referent hasn't been serialized yet.
+                    oldNode = self.document.createElement("UNNAMED")
+                    self.prepared[id(obj)] = (obj, oldNode)
+                else:
+                    oldNode = self.prepared[id(obj)][1]
+
                 if oldNode.hasAttribute("reference"):
                     # it's been referenced already
                     key = oldNode.getAttribute("reference")
                 else:
                     # it hasn't been referenced yet
-                    self._ref_id = self._ref_id + 1
+                    self._ref_id += 1
                     key = str(self._ref_id)
                     oldNode.setAttribute("reference", key)
                 node = self.document.createElement("reference")
                 node.setAttribute("key", key)
                 return node
-            node = self.document.createElement("UNNAMED")
-            self.prepareElement(node, obj)
+
+            ## The object hasn't been serialized yet; do so.
+
+            if self.prepared.has_key(id(obj)):
+                # The obj HAS been referenced, but it HASN'T been
+                # serialized yet; in this case, the node has already
+                # been created.
+                node = self.prepared[id(obj)][1]
+            else:
+                node = self.document.createElement("UNNAMED")
+                # Make future references to this object possible
+                self.prepared[id(obj)] = (obj, node)
+
             if objType is types.ListType or __builtin__.__dict__.has_key('object') and isinstance(obj, NodeList):
                 node.tagName = "list"
                 for subobj in obj:

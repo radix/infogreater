@@ -3,7 +3,7 @@ from __future__ import division
 from cStringIO import StringIO
 import cPickle, os
 
-from twisted.python import util as tputil, components, context
+from twisted.python import util as tputil, components, context as ctx
 from twisted.spread.ui import gtk2util
 from twisted.internet import defer, reactor
 
@@ -132,7 +132,7 @@ class GreatUI(gtk2util.GladeKeeper):
     def loadFromPickle(self, fn):
         for x in self.canvas.get_children():
             x.destroy()
-        root = context.call({'controller': self}, cPickle.load, open(fn, 'rb'))
+        root = ctx.call({'controller': self}, cPickle.load, open(fn, 'rb'))
         self.root = root
         print "ROOT AM", repr(root)
         self.basenode = root.node
@@ -281,7 +281,7 @@ class INodeUI(components.Interface):
         """
 
 
-class BaseNodeUI(util.Forgetter):
+class BaseNodeUI(xmlobject.XMLObject):
     """
     Make sure subclasses define:
     attr widget: The outermost widget.
@@ -303,18 +303,17 @@ class BaseNodeUI(util.Forgetter):
         self.node = node
         self.childBoxes = []
 
-
-    persistenceForgets = ['controller', 'widget']
     contextRemembers = [('controller', 'controller')]
 
     def init(self, controller, parent):
         self.controller = controller
         self.parent = parent
-
         self._makeWidget()
 
-    def __setstate__(self, d):
-        util.Forgetter.__setstate__(self, d)
+
+    def setXMLState(self, attrs, children):
+        xmlobject.XMLObject.setXMLState(self, attrs, children)
+        self.parent = ctx.get('xmlparent')
         self._makeWidget()
 
 
