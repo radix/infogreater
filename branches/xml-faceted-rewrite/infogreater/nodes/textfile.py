@@ -23,6 +23,7 @@ class TextFileNode(simple.SimpleNode):
 
 
     def load(self, inf=None):
+        print "LOADING", self.filename, "!!!!!!!!"
         if inf is None:
             if os.path.exists(self.filename):
                 inf = open(self.filename)
@@ -55,9 +56,13 @@ class TextFileNode(simple.SimpleNode):
             else:
                 content = line[spaces+2:].rstrip('\r\n')
                 level = (spaces - 1) / 2
-                theNode = SimpleNode(content)
+                parent = INode(nodes[level - 1][-1])
+                theNode = INode(
+                    simple.makeSimple(INodeUI(self).controller,
+                                      parent=parent,
+                                      content=content))
                 nodes.setdefault(level, []).append(theNode)
-                nodes[level - 1][-1].putChild(theNode)
+                parent.children.append(theNode)
             spaces = 0
             level = 0
 
@@ -135,12 +140,12 @@ class TextNodeXML(base.BaseNodeXML):
     def setXMLState(self, attrs, children, parent):
         node = INode(self)
         node.parent = INode(parent, None)
-        node.setFilename(attrs['filename'])
-        node.load()
 
         nodeui = INodeUI(self)
         nodeui.expanded = attrs['expanded'] == "True"
         nodeui.controller = ctx.get('controller')
+
+        node.setFilename(attrs['filename'])
         nodeui._makeWidget()
 
 def makeTextBase():
@@ -148,7 +153,7 @@ def makeTextBase():
     faced[INode] = TextFileNode(faced)
     faced[INodeUI] = TextFileUI(faced)
     faced[xmlobject.IXMLObject] = TextNodeXML(faced)
-    faced[facets.IReprable] = INode(faced)
+    #faced[facets.IReprable] = INode(faced)
     return faced
 
 # XXX Use plugins or context something

@@ -19,6 +19,17 @@ class SimpleNode(facets.Facet):
         self.children = []
         self.parent = parent
 
+    def _setContent(self, v):
+        if v == 'Ha!':
+            print "OH CRAP"
+            import traceback
+            traceback.print_stack()
+        self._content = v
+
+    content = property(lambda s: s._content,
+                       _setContent)
+
+
     def getContent(self):
         return self.content
     def setContent(self, content):
@@ -30,7 +41,10 @@ class SimpleNode(facets.Facet):
         self.children = children
 
     def __str__(self):
-        return "<%s content=%r children=%r>" % (self.__class__.__name__, self.content, self.children)
+        return "<%s at %s content=%r children=%r>" % (self.__class__.__name__,
+                                                      hex(id(self)),
+                                                      self.content,
+                                                      self.children)
     __repr__ = __str__
 
 
@@ -58,19 +72,24 @@ def makeSimpleBase():
     faced[INode] = SimpleNode(faced)
     faced[INodeUI] = SimpleNodeUI(faced)
     faced[xmlobject.IXMLObject] = SimpleNodeXML(faced)
-    faced[facets.IReprable] = INode(faced)
+    #faced[facets.IReprable] = INode(faced)
     return faced
 
 # XXX Use plugins or context something
 xmlobject.unmarmaladerRegistry['SimpleNode'] = makeSimpleBase
 
 
-def makeSimple(controller):
+def makeSimple(controller, parent=None, content=""):
     simp = makeSimpleBase()
     nodeui = INodeUI(simp)
+    node = INode(simp)
+
+    node.parent = parent
+    node.content = content
+
     nodeui.controller = controller
     nodeui._makeWidget()
-    node = INode(simp)
+
     return simp
 
 STOP_EVENT = True # Just to make it more obvious.
@@ -98,7 +117,7 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
         self.widget.connect('focus-out-event', self._cbLostFocus)
         self.widget.connect('size-allocate', self._cbSized)
         self.widget.connect('populate-popup', self._cbPopup)
-        print "PUTTING", self.widget
+        #print "PUTTING", self.widget
         self.controller.canvas.put(self.widget, 0, 0)
         self.widget.hide()
 
@@ -374,6 +393,10 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
     def key_Up(self):
         # XXX - Same XXX as key_Down, except reversed.
         if self.editing: return
+        print ":((((("
+        print INode(self)
+        print INode(self).parent.children
+        print "))))):"
         i = INode(self).parent.children.index(INode(self))-1
         if i == -1: return
         if self.uiparent():

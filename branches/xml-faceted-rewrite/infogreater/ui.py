@@ -133,7 +133,7 @@ class GreatUI(gtk2util.GladeKeeper):
         root = ctx.call({'controller': self},
                         xmlobject.fromXML, open(fn, 'rb').read())
         self.root = base.INodeUI(root)
-        print "ROOT AM", repr(root.original)
+        #print "ROOT AM", repr(root.original)
         self.redisplay()
 
 
