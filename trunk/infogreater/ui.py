@@ -25,16 +25,7 @@ __metaclass__ = type
 class XML(glade.XML):
     __getitem__ = glade.XML.get_widget
 
-# TODO:
-#   *Keyboard navigation
-#    *more ideas
-#   *Simple nodes to make the common case of FreeMind-like usage acceptable.
-#    *Look up INodeUI implementors as adapters of Nodes [Done, but iface needs bettered]
-#   *adapting each interface in a node to an IGUI thing?
-#   *"caching" of nodes and properties is either too lazy or too
-#     strict. fix! facilitate totally dynamic stuff!
-#    *What??? I don't know what this point is talking about.
-#   *Obsolete manual editing of this TODO list
+#XXX - adapting each interface in a node to an IGUI thing?
 
 class GreatUI(gtk2util.GladeKeeper):
 
@@ -67,7 +58,20 @@ class GreatUI(gtk2util.GladeKeeper):
         else:
             self.basenode = node.SimpleNode()
         self.root = INodeUI.fromNode(self.basenode, self, self.canvas)
-        self.redisplay()
+
+        # XXX HUGE HACK
+
+        # The problem here is that TextViews calculate and update
+        # their size_request in an idle call, or something; I can't
+        # figure out a way to have them calcualet their size
+        # immediately after creation, so I don't know how much room to
+        # give them while displaying. I doubt it's possible to do
+        # that. So I think the only solution is to give in and just
+        # make the layout algorithm incremental, and respond to
+        # TextView's size-changing event.
+        reactor.callLater(0.1, lambda: (self.redisplay(), self.root.widget.grab_focus()))
+        # End hack
+        
         self.root.widget.grab_focus()
 
 
@@ -81,11 +85,12 @@ class GreatUI(gtk2util.GladeKeeper):
             bheight = box.widget.size_request()[1]
             self.canvas.window.draw_line(
                 self.lineGC, parent.X+pwidth,
-                int(parent.Y+(pheight/2)), box.X, int(box.Y+(bheight/2))
-                )
+                parent.Y+(pheight//2), box.X, box.Y+(bheight//2)
+            )
             self.drawLines(box)
         
     def redisplay(self):
+        print "I AM REDISPLAYING"
         width, height = self.canvas.window.get_geometry()[2:4]
         self.canvas.window.clear_area_e(0,0, width, height)
         if not hasattr(self, 'root'):
@@ -173,6 +178,7 @@ class INodeUI(components.Interface):
         nui.controller = controller
         nui.canvas = canvas
         nui.parent = parent
+        nui.init()
         return nui
     fromNode = staticmethod(fromNode)
 
@@ -244,7 +250,7 @@ class BaseNodeUI:
         self.node = node
         self.childBoxes = []
 
-    def _internalMakeWidget(self):
+    def init(self):
         for child in self.node.getChildren():
             self.childBoxes.append(
                 INodeUI.fromNode(child, self.controller, self.canvas, parent=self)
@@ -253,9 +259,6 @@ class BaseNodeUI:
 
 
     def calculateHeight(self):
-        if not self.widget:
-            self._internalMakeWidget()
-
         height = 0
         if self.expanded:
             for x in self.childBoxes:
@@ -271,8 +274,6 @@ class BaseNodeUI:
 
 
     def redisplay(self, X, Y):
-        if not self.widget:
-            self._internalMakeWidget()
         # XXX This is *full* of random tweaks! Heh! (and it needs more)
         assert Y >= 0, (X, Y)
 
@@ -286,6 +287,7 @@ class BaseNodeUI:
             return
 
         # Shift child right by my widget-width plus padding.
+        print ":-(" , self.widget.size_request()
         childX = X + self.widget.size_request()[0] + self.H_PAD
 
         # Shift child up by my *total*-height div 2. (so the parent is
@@ -309,7 +311,7 @@ class BaseNodeUI:
             # Hmm. Why isn't this just "+= prevHeight"?? It screws things
             # up if it is. I think maybe it *should* be prevHeight,
             # but something somewhere *else* is being too annoying to
-            # allow it to be. XXX.
+            # allow it to be. How about that "WHAT???" above? XXX.
             childY += (prevHeight // 2) + (child.height // 2)
             childY += self.V_PAD
             child.redisplay(childX, childY)
@@ -356,7 +358,7 @@ class FancyKeyMixin:
     def _cbGotKey(self, thing, event):
         print event.keyval, repr(event.string), event.state, repr(keymap[event.keyval])
         mod = None
-        if event.state & 4: # control
+        if event.state & gtk.gdk.CONTROL_MASK: # control
             mod = 'ctrl'
         keyname = keymap[event.keyval]
         if mod:
@@ -366,41 +368,45 @@ class FancyKeyMixin:
         m = getattr(self, name, None)
         if m:
             return m()
-        
+
+
+STOP_EVENT = True # Just to make it more obvious.
+
+
 class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
 
-    # XXX - Conversion to TextViews for SimpleNodes
-    # XXX - Conversion to other Node types
+    # XXX - TextView
+    # XXX - Some visual distinction for nodes-with-children
+    # XXX - Conversion to other Node types ?
     # XXX - cut'n'paste
     # XXX - separate view for cut-buffer?
+    # XXX - Scroll the canvas to the currently-focused node, always.
+
 
     def _makeWidget(self):
-        self.widget = gtk.Entry()
+        self.widget = gtk.TextView()
+        for thingy in (gtk.TEXT_WINDOW_LEFT, gtk.TEXT_WINDOW_RIGHT, gtk.TEXT_WINDOW_TOP, gtk.TEXT_WINDOW_BOTTOM):
+            self.widget.set_border_window_size(thingy, 2)
+        
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
-        self.widget.set_text(self.node.getContent())
-        self.resize()
+        self.buffer = self.widget.get_buffer()
+        self.buffer.set_text(self.node.getContent())
         self.widget.set_editable(False)
         self.widget.connect('key-press-event', self._cbGotKey)
-        self.widget.connect('changed', self._cbChanged)
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
 
         self.canvas.put(self.widget, 0,0)
         self.widget.hide()
+        self.widget.show()
+        print self.widget.size_request()
 
 
-    def resize(self):
-        # XXX this *1.4 is sucky and buggy. I shouldn't need to mult at _all_!
-        self.widget.set_width_chars(
-            int(len(self.widget.get_text())*1.4)
-            )
 
     def _cbFocus(self, thing, direction):
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
 
-    def _cbChanged(self, *a):
-        self.resize()
 
     def _cbLostFocus(self, thing, thing2):
         self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
@@ -437,22 +443,19 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     ##################
 
     def key_Insert(self):
-        self.widget.stop_emission('key-press-event')
         self.addChild()
-        return True
+        return STOP_EVENT
 
 
     def key_ctrl_e(self):
         """
         Put into edit mode.
         """
-        if self.editing:
-            return
-        self.oldText = self.widget.get_text()
+        if self.editing: return
+        self.oldText = self.buffer.get_text(*self.buffer.get_bounds())
         self.widget.set_editable(True)
         self.widget.modify_base(gtk.STATE_NORMAL, WHITE)
         self.widget.modify_bg(gtk.STATE_NORMAL, DGREEN)
-        #reactor.callLater(0, self.widget.grab_focus)
         self.editing = True
 
 
@@ -462,6 +465,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         i = self.parent.node.children.index(self.node)
         del self.parent.node.children[i]
         del self.parent.childBoxes[i]
+        # XXX - crap, cutting nodes-with-children is broken
         self.widget.destroy()
         self.controller.redisplay()
         self.parent.widget.grab_focus()
@@ -480,27 +484,34 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
 
     def key_Right(self):
-        #self.widget.stop_emission('key-press-event')
-        if self.editing:
-            return
+        if self.editing: return
         if not self.expanded:
             self.toggleShowChildren()
         if self.childBoxes:
-            self.childBoxes[0].widget.grab_focus()
-        return True
+            self.childBoxes[len(self.childBoxes)//2].widget.grab_focus()
+        return STOP_EVENT
 
 
     def key_Left(self):
-        #self.widget.stop_emission('key-press-event')
         if self.editing: return
         if self.parent:
             self.parent.widget.grab_focus()
-        return True
+        return STOP_EVENT
+
+    def key_Down(self):
+        if self.editing: return
+        if self.parent:
+            self.parent.childBoxes[self.parent.childBoxes.index(self)+1].widget.grab_focus()
+
+    def key_Up(self):
+        if self.editing: return
+        if self.parent:
+            self.parent.childBoxes[self.parent.childBoxes.index(self)+-1].widget.grab_focus()
 
 
     def key_Return(self):
         if self.editing:
-            self.node.setContent(self.widget.get_text())
+            self.node.setContent(self.buffer.get_text(*self.buffer.get_bounds()))
             self.immute()
         else:
             self.parent.addChild(after=self) #XXX ifacebraking
@@ -508,10 +519,12 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
     def key_Escape(self):
         if not self.editing: return
+        self.cancelEdit()
+
+    def cancelEdit(self):
         print "cancelling edit!"
         self.immute()
-        self.widget.set_text(self.oldText)
-        self.resize()
+        self.buffer.set_text(self.oldText)
         del self.oldText
         #reactor.callLater(0, self.widget.grab_focus)
 
