@@ -29,19 +29,26 @@ import os
 
 class TextFileNode(SimpleNode):
 
-    def __init__(self, filename):
+    def __init__(self, filename='THIS SUCKS.TXT'):
         SimpleNode.__init__(self)
         self.filename = filename
         self.load()
 
 
+    def setFilename(self, fn):
+        self.filename = fn
+        self.load()
+
     def __getstate__(self):
         d = self.__dict__.copy()
         del d['content']
         del d['children']
+        return d
 
     def __setstate__(self, d):
         self.__dict__ = d
+        self.content = ""
+        self.children = []
         self.load()
 
 
@@ -51,7 +58,6 @@ class TextFileNode(SimpleNode):
                 inf = open(self.filename)
             else:
                 return "hell"
-
 
         line = inf.readline()
         title = []

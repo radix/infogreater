@@ -1,3 +1,16 @@
+2004-06-12  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* Node: TextFileNode, a new node that saves itself and its
+	children as a simple bulleted text file.
+	* UI: Finally implement a usable (i.e., you don't need to use the
+	debugger any more) interface to TextFileNode. Use shift-I to
+	create a new TextFileNode.
+	* File I/O: Errors at save-time will be caught and shown to the
+	user. This way we avoid saving truncated pickles that won't be
+	loadable later. However, this still isn't fool-proof; we can still
+	save buggy data without an exception occuring. Will work more on
+	this.
+
 2004-06-10  Christopher Armstrong  <radix@twistedmatrix.com>
 
 	* UI: Display a GtkTree of your nodes on open; it doesn't yet

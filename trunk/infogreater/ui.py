@@ -1,27 +1,26 @@
 from __future__ import division
 
+from cStringIO import StringIO
+import cPickle, os
+
 from twisted.python import util as tputil, components, context
 from twisted.spread.ui import gtk2util
-
 from twisted.internet import defer, reactor
-
-from infogreater import node, util
 
 import gtk
 from gtk import glade, keysyms
-
 from gtkgoodies import tree
 
+from infogreater import node, util
 
-import cPickle, os
 
 DEFAULT_FILE = os.path.expanduser('~/.infogreater.data')
-
 GLADE_FILE = tputil.sibpath(__file__, "info.glade")
 
 
 __metaclass__ = type
 
+nodeTypes = [node.SimpleNode, node.TextFileNode]
 
 class XML(glade.XML):
     __getitem__ = glade.XML.get_widget
@@ -134,6 +133,7 @@ class GreatUI(gtk2util.GladeKeeper):
             x.destroy()
         root = context.call({'controller': self}, cPickle.load, open(fn, 'rb'))
         self.root = root
+        print "ROOT AM", repr(root)
         self.basenode = root.node
         self.redisplay()
 
@@ -165,7 +165,24 @@ class GreatUI(gtk2util.GladeKeeper):
     def _save(self, filename):
         self.filename = filename
         print "dumping", self.root
-        cPickle.dump(self.root, open(self.filename, 'wb'))
+        tmpfn = filename + '.tmp~~~'
+        try:
+            cPickle.dump(self.root, open(tmpfn, 'wb'))
+        except Exception, e:
+            msg = ("There was an error saving your file. :-(\n"
+                   "Please report this as a bug. The traceback follows.\n\n")
+            io = StringIO()
+            import traceback
+            traceback.print_exc(file=io)
+            msg += io.getvalue()
+            md = gtk.MessageDialog(parent=self.window,
+                                   type=gtk.MESSAGE_ERROR,
+                                   buttons=gtk.BUTTONS_CLOSE,
+                                   message_format=msg)
+            md.run()
+            md.destroy()
+        else:
+            os.rename(tmpfn, self.filename)
 
 
     def on_save_activate(self, thing):
@@ -412,10 +429,37 @@ class FancyKeyMixin:
             name = 'key_%s_%s' % (mod, keyname)
         else:
             name = 'key_%s' % keyname
+        print name
         m = getattr(self, name, None)
         if m:
             return m()
 
+
+def presentChoiceMenu(question, choices):
+    d = defer.Deferred()
+
+    w = gtk.Window()
+    w.connect('destroy',
+              lambda *a: (not d.called) and d.errback(Exception("Closed")))
+    w.set_title(question)
+
+    vb = gtk.VBox()
+    w.add(vb)
+
+    vb.pack_start(gtk.Label(question))
+    vbb = gtk.VButtonBox()
+
+    vb.pack_start(vbb)
+    for i,choice in enumerate(choices):
+        b = gtk.Button(choice)
+        print "button", b, choice
+        b.connect('clicked', lambda foo, i=i: (d.callback(i), w.destroy()))
+        vbb.add(b)
+
+    w.show_all()
+
+    return d
+    
 
 STOP_EVENT = True # Just to make it more obvious.
 
@@ -423,7 +467,7 @@ STOP_EVENT = True # Just to make it more obvious.
 class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     editing = False
     
-    persistenceForgets = ['buffer']
+    persistenceForgets = ['buffer', 'treeiter']
     
     def _makeWidget(self):
         self.widget = gtk.TextView()
@@ -445,6 +489,7 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)
         self.widget.connect('size-allocate', self._cbSized)
+        self.widget.connect('populate-popup', self._cbPopup)
 
         self.controller.canvas.put(self.widget, 0,0)
         self.widget.hide()
@@ -469,6 +514,9 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
             self.widget.set_border_window_size(thingy, width)
 
 
+
+    def _cbPopup(self, textview, menu):
+        print "HEY POPUP", menu
 
     focused = False
 
@@ -576,6 +624,17 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
         return STOP_EVENT
 
     key_ctrl_i = key_Insert
+
+    def key_shift_I(self):
+        if self.editing: return
+        print "HEY"
+        d = presentChoiceMenu("Which node type do you want to create?",
+                              [x.__name__ for x in nodeTypes])
+        d.addCallback(self._cbGotNodeChoice)
+
+    def _cbGotNodeChoice(self, index):
+        nt = nodeTypes[index]
+        self.addChild(nt())
 
 
     def key_ctrl_e(self):
@@ -721,5 +780,39 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
     key_ctrl_p = key_Up
 
 
-components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
+def getFileName(glob='*'):
+    d = defer.Deferred()
 
+    fs = gtk.FileSelection()
+    fs.complete(glob)
+    fs.ok_button.connect('clicked',
+                         lambda a: d.callback(fs.get_filename()))
+    fs.cancel_button.connect('clicked',
+                             lambda a: d.errback(Exception("Cancelled")))
+    fs.show_all()
+    d.addBoth(lambda r: (fs.destroy(), r)[1])
+    return d
+
+
+class TextFileUI(SimpleNodeUI):
+    def init(self, controller, parent):
+        print "HEY GETTING FILENAME"
+        d = getFileName('*.txt')
+        def gotIt(r):
+            self.node.setFilename(r)
+        d.addCallback(gotIt)
+        SimpleNodeUI.init(self, controller, parent)
+
+    def _cbPopup(self, textview, menu):
+        print "adding MI!"
+        mi = gtk.MenuItem('save to %s' % (self.node.filename,))
+        mi.connect('activate', self._cbSave)
+        menu.append(mi)
+        menu.show_all()
+
+    def _cbSave(self, mi):
+        print "Saving!"
+        self.node.save()
+
+components.registerAdapter(SimpleNodeUI, node.SimpleNode, INodeUI)
+components.registerAdapter(TextFileUI, node.TextFileNode, INodeUI)
