@@ -16,10 +16,9 @@ from infogreater.gtkgoodies import tree
 from infogreater import util, facets, xmlobject
 from infogreater.nodes import base, simple
 
-
-
 DEFAULT_FILE = os.path.expanduser('~/.infogreater.data')
-GLADE_FILE = tputil.sibpath(__file__, "info.glade")
+GLADE_FILE = util.findDataFile('info.glade')
+
 
 __metaclass__ = type
 
