@@ -1,21 +1,40 @@
 # build IG into an NSIS installer
 
-NSISDIR = C:\Program Files\NSIS
-NSIS = $NSISDIR\makensis.exe
+NSISDIR =         C:\Program Files\NSIS
+NSIS =            $NSISDIR\makensis.exe
 @from twisted.python import util
 @import gobject
-PYGTKDIR = `util.sibpath(gobject.__file__, '')`
+PYGTKDIR =        `util.sibpath(gobject.__file__, '')`
+GTKINSTALLER    = gtk-win32-2.4.4-rc2.exe
+GTKINSTALLERURI = http://umn.dl.sourceforge.net/sourceforge/gladewin32/$(GTKINSTALLER)
+:attr {fetch = $(GTKINSTALLERURI)} $(GTKINSTALLER)
 
-version = 0.0.3
+# get most of the strings used here (and used by installer.nsi) from
+# setup.py, via execfile.
+:python
+    _d = {}
+    execfile('setup.py', _d)
+    strings = _d['setup_args']
+    # stick GTKINSTALLER into strings, it will be used when generating
+    # installer.nsi later on
+    strings['gtkinstaller'] = _no.GTKINSTALLER
+version = `strings['version']`
+name = `strings['name']`
 
-all: InfoGreater-$(version)-Setup.exe
+all: $(name)-$(version)-Setup.exe
     :print :Done with all.
 
-InfoGreater-$(version)-Setup.exe:
+$(name)-$(version)-Setup.exe: installer.nsi $(GTKINSTALLER)
     :sys {f} python setup.py py2exe
+    # copy pygtk into the staging area manually so nsis can find it
     :copy {r}{f} "$(PYGTKDIR)" dist/
     :sys "$(NSIS)" installer.nsi
 
+installer.nsi: installer.nsi.in
+    :python
+        nsi_template = file('installer.nsi.in', 'r').read()
+        file('installer.nsi', 'w').write(nsi_template % _no.strings)
+
 clean:
-    :del {r}{f} dist build InfoGreater-$(version)-Setup.exe
+    :del {r}{f} dist build $(name)-$(version)-Setup.exe installer.nsi
 

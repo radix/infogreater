@@ -6,14 +6,20 @@ if string.find(os.path.abspath(sys.argv[0]), os.sep+'InfoGreater') != -1:
     sys.path.insert(0, os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]), os.pardir, os.pardir)))
 ### end of preamble
 
-# py2exe hacks to find gtk and pygtk
-if sys.frozen:
+# hacks to find gtk and pygtk on win32
+try:
+    import _winreg
+    gtk_key = _winreg.OpenKeyEx(_winreg.HKEY_LOCAL_MACHINE,
+                                r'SOFTWARE\GTK\2.0')
+    gtk_dir = _winreg.QueryValueEx(gtk_key, 'Path')
     _d = dict(PATH=os.environ['PATH'], 
-              gtkbin=r'C:\Program Files\Common Files\GTK\2.0\bin',
-              gtklib=r'C:\Program Files\Common Files\GTK\2.0\lib',
+              gtkbin=r'%s\bin' % (gtk_dir,),
+              gtklib=r'%s\lib' % (gtk_dir,),
               SEP=os.pathsep)
     os.environ['PATH'] = "%(PATH)s%(SEP)s%(gtkbin)s%(SEP)s%(gtklib)s" % _d
     sys.path.append(os.path.join(os.path.dirname(sys.executable), 'gtk-2.0'))
+except ImportError:
+    pass
 
 from twisted.internet import gtk2reactor
 gtk2reactor.install()
