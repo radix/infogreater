@@ -453,11 +453,18 @@ class SimpleNodeUI(BaseNodeUI, FancyKeyMixin):
 
 
     def _cbFocus(self, thing, direction):
+        # set the node to blue
         self.widget.modify_base(gtk.STATE_NORMAL, LBLUE)
-        adj = self.controller.cscroll.get_vadjustment()
-        alloc = self.widget.get_allocation()        
-        if alloc.y < adj.value or alloc.y > adj.value + adj.page_size:
-            adj.set_value(min(alloc.y, adj.upper-adj.page_size))
+        # scroll the canvas to show the node
+        alloc = self.widget.get_allocation()
+        for orient, adj in [('y', self.controller.cscroll.get_vadjustment()),
+                            ('x', self.controller.cscroll.get_hadjustment())
+                            ]:
+            pos = getattr(alloc, orient)
+            if pos < adj.value or pos > adj.value + adj.page_size:
+                print "READJUSTING SCROLLYTHING", orient
+                adj.set_value(min(pos, adj.upper - adj.page_size))
+
 
 
     def _cbLostFocus(self, thing, thing2):

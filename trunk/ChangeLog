@@ -2,6 +2,8 @@
 
 	* UI: Allow node shifting up and down with Shift-up/down.
 	* UI: C-n/p/f/b are aliased to down/up/right/left.
+	* UI: Better automatic canvas adjustments to follow the selection;
+	it still needs work, though.
 	
 2004-05-13  Christopher Armstrong  <radix@twistedmatrix.com>
 
