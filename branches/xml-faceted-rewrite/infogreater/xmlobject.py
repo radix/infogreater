@@ -123,4 +123,4 @@ def unmarmaladeXO(unjellier, element):
 
 
 def boolFromString(s):
-    return 'True' == s and True or Folse
+    return 'True' == s and True or False
