@@ -22,6 +22,7 @@ class SimpleNode(facets.Facet):
 
     def getContent(self):
         return self.content
+
     def setContent(self, content):
         self.content = content
 
@@ -90,19 +91,6 @@ STOP_EVENT = True # Just to make it more obvious.
 
 class SimpleNodeUI(base.BaseNodeUI):
     editing = False
-
-        
-##    def getTreeIter(self):
-##        if hasattr(self, 'treeiter'):
-##            return self.treeiter
-##        if self.uiparent() == None:
-##            parentiter = None
-##        else:
-##            parentiter = self.uiparent().getTreeIter()
-##        self.treeiter = self.controller.tree.add(
-##            {'Node': INode(self).getContent()}, parentiter)
-##        return self.treeiter
-
 
     def immute(self):
         self.widget.set_editable(False)

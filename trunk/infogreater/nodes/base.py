@@ -81,7 +81,7 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
     I am huge. I will need to be refactored.
     """
     
-    __implements__ = (INodeUI,)
+    interface.implements(INodeUI)
 
     expanded = True
 
@@ -116,12 +116,8 @@ class BaseNodeUI(facets.Facet, keyhandler.FancyKeyMixin):
         self.widget.modify_bg(gtk.STATE_NORMAL, BLACK)
         self.buffer = self.widget.get_buffer()
         self.buffer.set_text(INode(self).getContent())
-
-        # bleh :( must delay treeing because _makeWidget can be called
-        # before my parent has been fully unserialized.
-##        reactor.callLater(0, self.getTreeIter)
-
         self.widget.set_editable(False)
+
         self.widget.connect('key-press-event', self._cbGotKey)
         self.widget.connect('focus-in-event', self._cbFocus)
         self.widget.connect('focus-out-event', self._cbLostFocus)

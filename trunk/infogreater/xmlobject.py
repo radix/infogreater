@@ -61,7 +61,7 @@ class XMLObject(marmalade.DOMJellyable, object):
     
     """
 
-    __implements__ = IXMLObject,
+    interface.implements(IXMLObject)
     tagName = 'XMLObject'
 
     def __init__(self, attrs=None, children=None, tagName=None):

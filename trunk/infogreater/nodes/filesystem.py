@@ -23,8 +23,6 @@ class FileSystemNode(facets.Facet):
         return os.path.isdir(self.path)
 
 
-
-
 class FileSystemXML(base.BaseNodeUI):
     tagName = 'FileSystem'
 
@@ -48,6 +46,7 @@ class FileSystemXML(base.BaseNodeUI):
         node.path = attrs['filename']
         nodeui._makeWidget()
         
+
 def makeFileSystemBase(path='/'):
     faced = facets.Faceted()
     faced[INode] = FileSystemNode(faced, path)
@@ -55,6 +54,7 @@ def makeFileSystemBase(path='/'):
     faced[xmlobject.IXMLObject] = FileSystemXML(faced)
     #faced[facets.IReprable] = INode(faced)
     return faced
+
 
 def makeFileSystem(controller, parent=None, path='/'):
     fsnode = makeFileSystemBase(path=path)
