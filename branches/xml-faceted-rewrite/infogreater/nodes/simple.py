@@ -131,61 +131,56 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
             self.widget.set_border_window_size(thingy, width)
 
 
-
     def _cbPopup(self, textview, menu):
         print "HEY POPUP", menu
 
-    focused = False
 
+    sized = False
 
     def focus(self):
+        # XXX I don't remember why this does this.
         if self.widget.is_focus():
             #print "I am the focus! So I will bypass etc."
-            return self._cbFocus(None, None)
+            return self._recenter()
         self.widget.grab_focus()
 
 
     def _cbSized(self, thing, alloc):
         # When a new Node is created it'll get the focus event while
         # the size and position are still -1, -1. So we implement this
-        # to scroll to the widget when that happens.
+        # to scroll to the widget when it gets initially sized.
 
-        # Also we need to refocus when the size changes from editing etc.
-        if (self.widget.is_focus() and not self.focused) or self.editing:
+        # Also we want to recenter when the size changes from the user
+        # typing into it.
+        if (self.widget.is_focus() and not self.sized) or self.editing:
             #print "_cbSized to tha fizocus"
-            self._cbFocus(None,None)
+            self._recenter()
 
     def _cbFocus(self, thing, direction):
-        #print "hey someone got focus man", id(self)
-        # set the node to blue
-        if thing is not None:
-            # UGGh. We're using thing=None here as a heuristic that
-            # this is a manually-called _cbFocus instead of the actual
-            # event. XXX
+        """
+        Set the node to blue and recenter to it.
+        """
+        # The reason this modify_base is here instead of in _recenter
+        # is that this call triggers a size-event: _recenter is called
+        # from the size-event handler (_cbSized), so we have to avoid
+        # the infinite loop.
+        self.widget.modify_base(gtk.STATE_NORMAL, base.LBLUE)
+        return self._recenter()
 
-            # The point is that this call triggers a size-event, so
-            # _cbSized gets called, which calls this. UGH.
-            self.widget.modify_base(gtk.STATE_NORMAL, base.LBLUE)
-
-        # scroll the canvas to show the node
+    def _recenter(self):
+        """
+        Position the canvas so that this node is in the center.
+        """
 
         alloc = self.widget.get_allocation()
-        # XXX make this optional (it makes current selection always centered)
-##        yadj = self.controller.cscroll.get_vadjustment()
-##        xadj = self.controller.cscroll.get_hadjustment()
-
         width, height = self.controller.cscroll.window.get_geometry()[2:4]
-##        print width, height
-##        yadj.set_value(alloc.y - height/2)
-##        xadj.set_value(alloc.x - width/2)
-##        return
 
-        # XXX make this optional
-        #print "y! x!", alloc.y, alloc.x
+        # XXX some horrible hackiness to avoid infinite event-recursion.
         if alloc.y == -1 or alloc.x == -1:
-            self.focused = False
+            self.sized = False
             return
-        self.focused = True
+        self.sized = True
+
         for pos, size, windowsize, adj in [
             (alloc.y, alloc.height, height,
              self.controller.cscroll.get_vadjustment()),
@@ -195,7 +190,6 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
 
             if pos < adj.value or pos+size > adj.value + adj.page_size:
                 adj.set_value(pos+(size/2) - windowsize/2)
-                #adj.set_value(min(pos, adj.upper - adj.page_size))
 
 
     def _cbLostFocus(self, thing, thing2):
@@ -214,6 +208,8 @@ class SimpleNodeUI(base.BaseNodeUI, base.FancyKeyMixin):
     def placedUnder(self, parent):
         INode(self).parent = INode(parent)
         self._makeWidget()
+        for x in INode(self).children:
+            INodeUI(x).placedUnder(self)
 
 
     def addChild(self, newnode=None, after=None):
