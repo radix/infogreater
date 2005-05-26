@@ -1,5 +1,6 @@
 
 from twisted.trial import unittest
+from twisted.python import context
 
 from infogreater import ui, xmlobject
 
@@ -10,16 +11,16 @@ twisted.internet.base.DelayedCall.debug = True
 from infogreater.nodes import base, simple
 
 class DummyController(object):
-    pass
-
+    def __init__(self):
+        self.canvas = DummyCanvas()
+        
 class DummyCanvas(object):
     def put(*a):
         pass
 
 class TestSave(unittest.TestCase):
-    def test_saveEmpty(self):
+    def test_saveTiny(self):
         controller = DummyController()
-        controller.canvas = DummyCanvas()
         nodeui = base.INodeUI(
             simple.makeSimple(controller, content="hello world"))
         savefile = StringIO()
@@ -27,3 +28,13 @@ class TestSave(unittest.TestCase):
         self.assertEqual(savefile.getvalue(), '<?xml version="1.0"?>\n'
                          '<SimpleNode content="hello world" expanded="True">'
                          '</SimpleNode>')
+
+    def test_restoreTiny(self):
+        controller = DummyController()
+        root = context.call({'controller': controller},
+                            xmlobject.fromXML, '<?xml version="1.0"?>\n'
+                            '<SimpleNode content="hi there" expanded="True">'
+                            '</SimpleNode>')
+        root = base.INode(root)
+        self.assertEqual(root.getContent(), "hi there")
+        self.failIf(root.hasChildren())
