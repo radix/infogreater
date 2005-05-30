@@ -1,3 +1,9 @@
+branches/may-sprint/*.bak
+branches/may-sprint/*.gladep
+branches/may-sprint/*.ig
+branches/may-sprint/*.mm
+branches/may-sprint/*.pyc
+branches/may-sprint/*.tmp
 branches/xml-faceted-rewrite/*.bak
 branches/xml-faceted-rewrite/*.gladep
 branches/xml-faceted-rewrite/*.ig

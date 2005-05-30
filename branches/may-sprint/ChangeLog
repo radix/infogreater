@@ -1,0 +1,73 @@
+2004-07-18  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Newly created nodes (with Return or Insert) are now
+	automatically put into edit mode.
+	* UI: Nodes now have a minimum width, so empty nodes aren't so
+	weird looking any more.
+	* UI: If you hit Escape on a newly-created node that hasn't yet
+	been committed, it will be deleted.
+
+2004-07-17  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Nasty bugs fixed: pasting was broken in the 0.0.3 release
+	:-( Now fixed. Also when inserting a child, expand the parent.
+
+	* FreeMind: Updated infogreater/freemind.py to write the new
+	format.
+
+2004-07-15  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* Installation: Add distutils support thanks to Sourav K. Mandal.
+	* UI: When creating a new map, put some useful information for
+	newbies in the root node.
+
+2004-07-14  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Use nicer names in the insert special node window.
+	* UI: shift-up and shift-down work again.
+
+2004-07-10  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* FileSystem: Wow, the filesystem browser actually kind of
+	works. shift-I, select makeFileSystem.
+
+2004-07-09  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* Persistence: A big rewrite, originally spurred by the need for a
+	better file saving/loading solution. Switched from Pickle to an
+	XML file format. To convert your old pickles to the new XML
+	format, run 'python infogreater/upgradepickle.py YOUR_PICKLE >
+	YOUR_XML'.
+
+2004-06-12  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* Node: TextFileNode, a new node that saves itself and its
+	children as a simple bulleted text file.
+	* UI: Finally implement a usable (i.e., you don't need to use the
+	debugger any more) interface to TextFileNode. Use shift-I to
+	create a new TextFileNode.
+	* File I/O: Errors at save-time will be caught and shown to the
+	user. This way we avoid saving truncated pickles that won't be
+	loadable later. However, this still isn't fool-proof; we can still
+	save buggy data without an exception occuring. Will work more on
+	this.
+
+2004-06-10  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Display a GtkTree of your nodes on open; it doesn't yet
+	follow changes you make.
+
+2004-06-07  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* UI: Allow node shifting up and down with Shift-up/down.
+	* UI: C-n/p/f/b are aliased to down/up/right/left.
+	* UI: Ctrl-i also inserts nodes.
+	* UI: Much better automatic scrolling to follow the selection.
+	* UI: Fix the bug that made the auto-scrolling code not work when
+	creating a new node.
+	* UI: When typing off the edge of the screen, it will scroll to
+	contain your text.
+
+2004-05-13  Christopher Armstrong  <radix@twistedmatrix.com>
+
+	* Infogreater 0.0.1 released.
