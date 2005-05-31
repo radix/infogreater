@@ -11,13 +11,7 @@ twisted.internet.base.DelayedCall.debug = True
 from infogreater.nodes import base, simple
 from infogreater.wrapper import SimpleNodeWrapper
 
-class DummyController(object):
-    def __init__(self):
-        self.canvas = DummyCanvas()
-        
-class DummyCanvas(object):
-    def put(*a):
-        pass
+from test_framework import DummyController, DummyCanvas
 
 class TestWrap(unittest.TestCase):
     def test_stupid(self):
@@ -30,10 +24,10 @@ class TestWrap(unittest.TestCase):
 class TestSave(unittest.TestCase):
     def test_saveTiny(self):
         controller = DummyController()
-        nodeui = base.INodeUI(
+        node = base.INode(
             simple.makeSimple(controller, content="hello world"))
         savefile = StringIO()
-        xmlobject.toXML(nodeui, savefile)
+        xmlobject.toXML(node, savefile)
         self.assertEqual(savefile.getvalue(), '<?xml version="1.0"?>\n'
                          '<SimpleNode content="hello world" expanded="True">'
                          '</SimpleNode>')

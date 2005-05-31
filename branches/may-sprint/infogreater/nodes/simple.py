@@ -10,6 +10,7 @@ from infogreater.nodes import base
 
 from twisted.internet import reactor
 
+
 class SimpleNode(facets.Facet):
     interface.implements(INode)
 
@@ -17,8 +18,16 @@ class SimpleNode(facets.Facet):
         self.original = original
         self.content = content
         self.children = []
-        self.parent = parent
+	if parent:
+            self.parents = [parent]
+	else:
+	    self.parents = []
 
+    def getParent(self):
+        return self.parents
+
+    def addParent(self, parent):
+        self.parents.append(parent)
 
     def getContent(self):
         return self.content
@@ -40,8 +49,8 @@ class SimpleNode(facets.Facet):
                                                       hex(id(self)),
                                                       self.content,
                                                       self.children)
-    __repr__ = __str__
 
+    __repr__ = __str__
 
 class SimpleNodeXML(base.BaseNodeXML):
     """
@@ -230,6 +239,7 @@ class SimpleNodeUI(base.BaseNodeUI):
 
     def _shift(self, modder):
         # XXX encapsulation
+	assert(False)
         sibs = INode(self).parent.children
         i = sibs.index(INode(self))
         print "moving from",i,"to",i+modder
