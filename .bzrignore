@@ -4,6 +4,7 @@ branches/may-sprint/*.ig
 branches/may-sprint/*.mm
 branches/may-sprint/*.pyc
 branches/may-sprint/*.tmp
+branches/may-sprint/_trial_temp
 branches/xml-faceted-rewrite/*.bak
 branches/xml-faceted-rewrite/*.gladep
 branches/xml-faceted-rewrite/*.ig
