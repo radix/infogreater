@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+
+### Twisted Preamble
+import sys, os, string
+if string.find(os.path.abspath(sys.argv[0]), os.sep+'InfoGreater') != -1:
+    sys.path.insert(0, os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]), os.pardir, os.pardir)))
+### end of preamble
+
+# hacks to find gtk and pygtk on win32
+try:
+    import _winreg
+    gtk_key = _winreg.OpenKeyEx(_winreg.HKEY_LOCAL_MACHINE,
+                                r'SOFTWARE\GTK\2.0')
+    gtk_dir = _winreg.QueryValueEx(gtk_key, 'Path')[0] # this is unicode
+    _d = dict(PATH=os.environ['PATH'], 
+              gtkbin=r'%s\bin' % (gtk_dir,),
+              gtklib=r'%s\lib' % (gtk_dir,),
+              SEP=os.pathsep)
+    # our GTK must go *first*.  we found cases of "DLL shadowing" - 
+    # e.g. intl.dll from subversion was being found and was incompatible
+    os.environ['PATH'] = ("%(gtkbin)s%(SEP)s%(gtklib)s%(SEP)s%(PATH)s" % _d
+                          ).encode('utf-8')
+    sys.path.append(os.path.join(os.path.dirname(sys.executable), 'gtk-2.0'))
+except ImportError:
+    pass
+
+from twisted.internet import gtk2reactor
+gtk2reactor.install()
+
+from infogreater import ui
+
+args = []
+if len(sys.argv) > 1:
+    args.append(sys.argv[1])
+
+# XXX This is pretty horrible, but eh, it doesn't REALLY matter until
+# I want to start allowing third-party plugins, or if any of my
+# plugins do expensive things on import.
+
+from infogreater.nodes import simple, filesystem, textfile, base
+base.nodeTypes = [("Text File", textfile.makeText),
+                  ("File System Browser", filesystem.makeFileSystem)]
+
+ui.GreatUI(*args)
+
+from twisted.internet import reactor
+reactor.run()

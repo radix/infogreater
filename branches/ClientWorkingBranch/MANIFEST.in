@@ -1,0 +1,5 @@
+include MANIFEST.in README ChangeLog LICENSE NEWS
+recursive-include infogreater *.py
+recursive-include infogreater *.glade
+recursive-include gtkgoodies *.py
+recursive-include bin *

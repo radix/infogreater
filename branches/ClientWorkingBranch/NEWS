@@ -1,0 +1,34 @@
+2004-07-14: Infogreater 0.0.3 released.
+
+This release involved a huge refactor. The biggest user-visible change
+is that it uses an XML file format instead of pickle files now. In the
+off chance that you have an old pickle-format file, run 'python
+infogreater/upgradepickle.py myold.pickle > mynew.xml'
+
+  * Node: TextFileNode, a new node that saves itself and its
+    children as a simple bulleted text file.
+  * UI: Finally implement a usable (i.e., you don't need to use the
+    debugger any more) interface to TextFileNode. Use shift-I to
+    create a new TextFileNode.
+  * File I/O: Errors at save-time will be caught and shown to the
+    user. This way we avoid saving truncated files that won't be
+    loadable later.
+  * FileSystem: Wow, the filesystem browser actually kind of
+    works. Use shift-I to insert one in your map.
+
+
+2004-06-08: Infogreater 0.0.2 released. 
+
+This release gets rid of many annoyances for simple mindmapping use,
+but doesn't offer any fancy new features. Changes are as follows:
+
+  * UI: Allow node shifting up and down with Shift-up/down.
+  * UI: C-n/p/f/b are aliased to down/up/right/left.
+  * UI: Ctrl-i also inserts nodes.
+  * UI: Much better automatic scrolling to follow the selection.
+  * UI: Fix the bug that made the auto-scrolling code not work when
+        creating a new node.
+  * UI: When typing off the edge of the screen, it will scroll to
+        contain your text.
+
+2004-05-13: Infogreater 0.1 released.

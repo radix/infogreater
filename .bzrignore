@@ -1,3 +1,10 @@
+branches/ClientWorkingBranch/*.bak
+branches/ClientWorkingBranch/*.gladep
+branches/ClientWorkingBranch/*.ig
+branches/ClientWorkingBranch/*.mm
+branches/ClientWorkingBranch/*.pyc
+branches/ClientWorkingBranch/*.tmp
+branches/ClientWorkingBranch/_trial_temp
 branches/may-sprint/*.bak
 branches/may-sprint/*.gladep
 branches/may-sprint/*.ig
