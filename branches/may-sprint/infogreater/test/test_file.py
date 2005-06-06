@@ -9,6 +9,7 @@ import twisted.internet.base
 twisted.internet.base.DelayedCall.debug = True
 
 from infogreater.nodes import base, simple
+from infogreater.wrapper import SimpleNodeWrapper
 
 class DummyController(object):
     def __init__(self):
@@ -17,6 +18,14 @@ class DummyController(object):
 class DummyCanvas(object):
     def put(*a):
         pass
+
+class TestWrap(unittest.TestCase):
+    def test_stupid(self):
+        controller = DummyController()
+	node = simple.makeSimple(controller, content="stupid")
+	stupid = SimpleNodeWrapper(node)
+        self.assertEqual(stupid.getContent(), 'stupid')
+        self.failIf(stupid.hasChildren())
 
 class TestSave(unittest.TestCase):
     def test_saveTiny(self):
@@ -38,3 +47,4 @@ class TestSave(unittest.TestCase):
         root = base.INode(root)
         self.assertEqual(root.getContent(), "hi there")
         self.failIf(root.hasChildren())
+
