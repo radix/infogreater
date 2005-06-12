@@ -131,8 +131,7 @@ class Tree(List):
         return gtk.TreeStore(*args)
 
     def add(self, values, parent=None):
-        iter = self.store.append(parent)
-        return self.set(values, iter)
+        return self.set(values, self.store.append(parent))
 
 def pixbufRender():
     return (gtk.CellRendererPixbuf(), 'pixbuf', {}, {})

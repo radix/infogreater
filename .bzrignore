@@ -42,6 +42,7 @@ trunk/*.ig
 trunk/*.mm
 trunk/*.pyc
 trunk/*.tmp
+trunk/_trial_temp
 trunk/bin/*.bak
 trunk/bin/*.gladep
 trunk/bin/*.ig
