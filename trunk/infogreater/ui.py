@@ -11,7 +11,7 @@ from twisted.internet import defer, reactor
 
 import gtk
 from gtk import glade
-from infogreater.gtkgoodies import tree
+## from infogreater.gtkgoodies import tree
 
 from infogreater import util, facets, xmlobject
 from infogreater.nodes import base, simple
@@ -57,7 +57,7 @@ class GreatUI(gtk2util.GladeKeeper):
         self.lineGC.set_rgb_fg_color(BLACK)
         #self.lineGC.line_width = 2
 
-        self.tree = tree.Tree(self.w['NodeTree'], [('Node', str)])
+##         self.tree = tree.Tree(self.w['NodeTree'], [('Node', str)])
 
         if filename is not None:
             self.filename = filename
