@@ -16,7 +16,7 @@ class SimplePerspective(pb.Avatar):
         raise DefinedError("exception!")
 
     def logout(self):
-        print self, "logged out"
+        pass
 
 class SimpleRealm:
     __implements__ = IRealm

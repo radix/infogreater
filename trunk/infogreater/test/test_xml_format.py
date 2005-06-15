@@ -13,7 +13,7 @@ from infogreater.nodes import base, simple
 from test_framework import DummyController, DummyCanvas
 
 class TestXmlFormat(unittest.TestCase):
-    def test_ToString(self):
+    def test_toXML(self):
         controller = DummyController()
         nodeA = base.INode(
             simple.makeSimple(controller, content="apple"))
@@ -22,12 +22,10 @@ class TestXmlFormat(unittest.TestCase):
         nodeA.setChildren([nodeB])
         nodeB.addParent(nodeA)
 
-        self.assertEqual(
-            str(nodeA),
-            '<?xml version="1.0"?>\n'
-            '<SimpleNode content="apple" id="1" expanded="True">'
-            '</SimpleNode>'
-            '<SimpleNode content="banana" id="2" expanded="True">'
-            '</SimpleNode>'
-            '<SimpleEdge start="1" end="2">'
-            '</SimpleEdge>')
+        expected = ('<?xml version="1.0"?>\n'
+                    '<SimpleNode content="apple" expanded="True">'
+                    '<SimpleNode content="banana" expanded="True">'
+                    '</SimpleNode>'
+                    '</SimpleNode>')
+
+        self.assertEqual(xmlobject.toXMLString(nodeA), expected)

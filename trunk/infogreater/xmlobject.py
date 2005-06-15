@@ -1,5 +1,7 @@
 # -*- test-case-name: infogreater.test.test_xmlobject -*-
 
+import cStringIO
+
 from twisted.python import reflect, context as ctx
 
 from zope import interface
@@ -111,6 +113,11 @@ class XMLObject(marmalade.DOMJellyable, object):
 
 def toXML(xo, fn):
     return marmalade.jellyToXML(IXMLObject(xo), fn)
+
+def toXMLString(xo):
+    io = cStringIO.StringIO()
+    marmalade.jellyToXML(IXMLObject(xo), io)
+    return io.getvalue()
 
 
 def fromXML(xml):

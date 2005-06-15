@@ -19,8 +19,6 @@ class TestDigraph(unittest.TestCase):
         nodeB = base.INode(simple.makeSimple(controller, content="banana"))
         nodeC = base.INode(simple.makeSimple(controller, content="carrot"))
         
-        print dir(nodeA)
-        
         nodeB.addParent(nodeA)
         nodeA.setChildren([nodeB])
         
@@ -41,4 +39,5 @@ class TestDigraph(unittest.TestCase):
         savefile = StringIO()
         xmlobject.toXML(cycleHead, savefile)
         assert(len(savefile.getvalue()) < 1000000)
+    test_cycleSave.skip = "XMLObject doesn't support implicit references"
 
