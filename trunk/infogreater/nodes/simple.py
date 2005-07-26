@@ -239,7 +239,7 @@ class SimpleNodeUI(base.BaseNodeUI):
 
     def _shift(self, modder):
         # XXX encapsulation
-	assert(False)
+## 	assert(False)
         sibs = INode(self).parent.children
         i = sibs.index(INode(self))
         print "moving from",i,"to",i+modder
